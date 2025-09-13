@@ -6,11 +6,20 @@ import { insertMaterialSchema, insertDeckSchema, insertFlashcardSchema, insertSt
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // Helper function to get demo user ID
+  const getDemoUserId = async (): Promise<string | null> => {
+    const demoUser = await storage.getUserByEmail('demo@example.com');
+    return demoUser?.id || null;
+  };
+
   // Materials
   app.get("/api/materials", async (req, res) => {
     try {
-      // For demo, use the demo user
-      const materials = await storage.getMaterialsByUserId("demo");
+      const demoUserId = await getDemoUserId();
+      if (!demoUserId) {
+        return res.status(404).json({ error: "Demo user not found" });
+      }
+      const materials = await storage.getMaterialsByUserId(demoUserId);
       res.json(materials);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch materials" });
@@ -31,9 +40,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/materials", async (req, res) => {
     try {
+      const demoUserId = await getDemoUserId();
+      if (!demoUserId) {
+        return res.status(404).json({ error: "Demo user not found" });
+      }
       const validatedData = insertMaterialSchema.parse({
         ...req.body,
-        userId: "demo" // For demo purposes
+        userId: demoUserId
       });
       const material = await storage.createMaterial(validatedData);
       res.json(material);
@@ -124,7 +137,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Decks
   app.get("/api/decks", async (req, res) => {
     try {
-      const decks = await storage.getDecksByUserId("demo");
+      const demoUserId = await getDemoUserId();
+      if (!demoUserId) {
+        return res.status(404).json({ error: "Demo user not found" });
+      }
+      const decks = await storage.getDecksByUserId(demoUserId);
       res.json(decks);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch decks" });
@@ -145,14 +162,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/decks", async (req, res) => {
     try {
+      const demoUserId = await getDemoUserId();
+      if (!demoUserId) {
+        return res.status(404).json({ error: "Demo user not found" });
+      }
       const validatedData = insertDeckSchema.parse({
         ...req.body,
-        userId: "demo" // For demo purposes
+        userId: demoUserId
       });
       const deck = await storage.createDeck(validatedData);
       res.json(deck);
     } catch (error) {
-      res.status(400).json({ error: "Invalid deck data" });
+      console.error('Deck creation error:', error);
+      res.status(400).json({ error: "Invalid deck data", details: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -201,7 +223,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Flashcards
   app.get("/api/flashcards", async (req, res) => {
     try {
-      const flashcards = await storage.getFlashcardsByUserId("demo");
+      const demoUserId = await getDemoUserId();
+      if (!demoUserId) {
+        return res.status(404).json({ error: "Demo user not found" });
+      }
+      const flashcards = await storage.getFlashcardsByUserId(demoUserId);
       res.json(flashcards);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch flashcards" });
@@ -210,7 +236,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/flashcards/review", async (req, res) => {
     try {
-      const flashcards = await storage.getFlashcardsForReview("demo");
+      const demoUserId = await getDemoUserId();
+      if (!demoUserId) {
+        return res.status(404).json({ error: "Demo user not found" });
+      }
+      const flashcards = await storage.getFlashcardsForReview(demoUserId);
       res.json(flashcards);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch flashcards for review" });
@@ -219,9 +249,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/flashcards", async (req, res) => {
     try {
+      const demoUserId = await getDemoUserId();
+      if (!demoUserId) {
+        return res.status(404).json({ error: "Demo user not found" });
+      }
       const validatedData = insertFlashcardSchema.parse({
         ...req.body,
-        userId: "demo"
+        userId: demoUserId
       });
       const flashcard = await storage.createFlashcard(validatedData);
       res.json(flashcard);
@@ -269,7 +303,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Study Sessions
   app.get("/api/study-sessions", async (req, res) => {
     try {
-      const sessions = await storage.getStudySessionsByUserId("demo");
+      const demoUserId = await getDemoUserId();
+      if (!demoUserId) {
+        return res.status(404).json({ error: "Demo user not found" });
+      }
+      const sessions = await storage.getStudySessionsByUserId(demoUserId);
       res.json(sessions);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch study sessions" });
@@ -278,9 +316,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/study-sessions", async (req, res) => {
     try {
+      const demoUserId = await getDemoUserId();
+      if (!demoUserId) {
+        return res.status(404).json({ error: "Demo user not found" });
+      }
       const validatedData = insertStudySessionSchema.parse({
         ...req.body,
-        userId: "demo"
+        userId: demoUserId
       });
       const session = await storage.createStudySession(validatedData);
       res.json(session);
@@ -292,7 +334,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Settings
   app.get("/api/settings", async (req, res) => {
     try {
-      const settings = await storage.getSettings("demo");
+      const demoUserId = await getDemoUserId();
+      if (!demoUserId) {
+        return res.status(404).json({ error: "Demo user not found" });
+      }
+      const settings = await storage.getSettings(demoUserId);
       if (!settings) {
         return res.status(404).json({ error: "Settings not found" });
       }
@@ -304,21 +350,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/settings", async (req, res) => {
     try {
+      const demoUserId = await getDemoUserId();
+      if (!demoUserId) {
+        return res.status(404).json({ error: "Demo user not found" });
+      }
       const validatedData = insertSettingsSchema.parse({
         ...req.body,
-        userId: "demo"
+        userId: demoUserId
       });
       const settings = await storage.createOrUpdateSettings(validatedData);
       res.json(settings);
     } catch (error) {
-      res.status(400).json({ error: "Invalid settings data" });
+      console.error('Settings save error:', error);
+      res.status(400).json({ error: "Invalid settings data", details: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
   // User data (for progress tracking)
   app.get("/api/user", async (req, res) => {
     try {
-      const user = await storage.getUserByUsername("demo");
+      const user = await storage.getUserByEmail('demo@example.com');
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
@@ -330,7 +381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/user", async (req, res) => {
     try {
-      const user = await storage.getUserByUsername("demo");
+      const user = await storage.getUserByEmail('demo@example.com');
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }

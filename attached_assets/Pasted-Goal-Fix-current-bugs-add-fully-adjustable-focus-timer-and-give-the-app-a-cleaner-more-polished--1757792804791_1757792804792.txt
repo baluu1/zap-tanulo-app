@@ -1,0 +1,49 @@
+Goal: Fix current bugs, add fully adjustable focus timer, and give the app a cleaner, more polished visual design. Keep all UI text Hungarian (code comments in English are fine). Do not add OpenAI calls yet; keep the placeholders.
+
+1) Bug fixes (must pass)
+	•	Settings save error: Fix Invalid settings data. All toggles (fókusz figyelmeztetések, napi emlékeztetők, téma/accent) must save and persist across reloads.
+	•	Deck creation error: Fix Method is not a valid HTTP token so Új pakli létrehozása reliably creates a deck and appears immediately in the list.
+	•	XP anomaly: Remove any seeded/demo XP. XP should only come from valós események (fókusz idő + helyes kártyák). Migrate old dummy data if needed.
+	•	Accent color persistence: Accent selection in Beállítások → Megjelenés must persist and apply globally.
+
+2) Focus timer — fully adjustable
+	•	Add presets 5 / 15 / 25 / 45 / 60 and a custom input (min–max: 1–120 perc).
+	•	Keep the circular progress. Recompute XP arányosan (pl. per-minute multiplier) minden időtartamnál.
+	•	Validate input (non-empty, numeric, range).
+
+3) Design overhaul — cleaner & consistent
+
+Apply a light visual refresh while keeping the current layout:
+	•	Typography & spacing: Use consistent heading/body sizes, larger line-height, generous spacing between sections, and consistent container widths.
+	•	Color system: Keep light/dark modes; refine neutral grays and accent palette for better contrast. Ensure WCAG-AA contrast where possible.
+	•	Components: Standardize buttons (primary/secondary/ghost), inputs, toggles, cards, empty states, and toasts. Add clear hover/active/disabled states.
+	•	Cards UI: Kártya tanulás nézet kapjon tiszta felső státuszt (számláló, helyes/hibás), nagy, olvasható kérdés/indoklás, és egyértelmű zöld „Tudom” / piros „Nem tudom” gombok + swipe jelölések.
+	•	Haladás: Jelenlegi és feloldott állatok látszanak; a jövőbeli szintek halvány, „zárolt” megjelenítést kapnak. Szintlépéskor kis konfetti/toast („Szintlépés! Nyitva: …”).
+	•	Phoenix art: Cseréld jobb, egységes (SVG/emoji-stílusú) Főnix ikonra. Helyi asset a /public-ban, ne hotlink.
+	•	Micro-interactions: Finom animációk (0.15–0.25s) gombnyomásra, kártyafordításra, toasts. Semmi túlzó.
+	•	Mobile-first: Ellenőrizd iPhone kis kijelzőn is; rugalmas rács, töréspontok, kattintható célterületek ≥44px.
+	•	Accessibility: Billentyű fókusz-állapotok, ARIA címkék fő elemekhez, konzisztens semantika.
+
+4) Data & persistence
+	•	Használd a meglévő perzisztens tárolást. Beállítások, paklik, kártyák, haladás, XP maradjon meg reload után.
+	•	Egy egyszeri migráció törölje a demo/seed adatot, ami felnyomná az XP-t.
+
+Acceptance criteria
+	•	Nincs dev overlay hiba normál használat közben.
+	•	Beállítások mentés hiba nélkül, értékek reload után megmaradnak.
+	•	Új pakli létrehozása működik, azonnal listázódik.
+	•	Accent szín állandó és globálisan alkalmazott.
+	•	XP csak tanulás/fókusz után nő; első látogatáskor 0/realistic seed.
+	•	Fókusz mód: Presetek + egyedi (1–120 perc) működik, XP arányosan számol.
+	•	Haladás → Szintek: csak jelenlegi + feloldott látszik; szintlépés toast megjelenik.
+	•	Új Főnix ikon egységes, helyi assetből.
+	•	UI összhangban: tipográfia, spacing, gomb-státuszok, kontraszt, mobil-reszponzív.
+
+Manual test steps
+	1.	Beállítások: téma/accent váltás + két toggle → Mentés → Reload → értékek megmaradnak, nincs hiba.
+	2.	Kártyák: hozz létre paklit, adj hozzá 2–3 kártyát, tanulj, swipe + gombok működnek; XP frissül.
+	3.	Fókusz mód: futtass 1 perc egyedi sessiont, majd 15 perc presetet → XP arányosan nő.
+	4.	Haladás: csak elért szintek látszanak; küszöb elérésekor toast/animáció jelenik meg.
+	5.	Általános UI: mobilon ellenőrizd a gombok méretét, kontrasztot, üres állapotokat; minden komponens stílusa egységes.
+
+Notes: All copy strictly Hungarian. Don’t change routes or overall information architecture. Leave OpenAI integration as placeholder for later.
