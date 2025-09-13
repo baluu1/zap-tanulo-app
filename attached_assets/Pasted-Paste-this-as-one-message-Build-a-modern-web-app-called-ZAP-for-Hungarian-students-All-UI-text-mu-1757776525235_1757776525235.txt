@@ -1,0 +1,56 @@
+Paste this as one message:
+
+Build a modern web app called ZAP for Hungarian students.
+All UI text must be in Hungarian. The app must support light/dark theme toggle (clean, minimalist; base on white/near-black + one accent color we can easily change later, e.g., deep blue). The app is responsive and mobile-first.
+
+Navigation
+
+Top navbar: ZAP logo and menu items: Funkciók, Haladás, Feltöltés, Regisztráció / Belépés.
+Use client-side routing so clicking each item changes the view.
+
+Core features (MVP)
+	1.	Feltöltés & Szövegbevitel
+	•	Textarea for pasting text and file upload (PDF, image).
+	•	For images/PDF: basic OCR to plain text (can be a placeholder now; prepare function hooks).
+	•	Two actions: Összefoglaló and Kártyák.
+	•	Integrate OpenAI API via .env key (create a settings panel to paste the key; never hardcode).
+	2.	Kártyák (flashcards)
+	•	Auto-generated from the feldolgozott szöveg and manual creation like Quizlet (Kérdés + Válasz).
+	•	Swipe UI: jobbra = „tudom”, balra = „nem tudom”.
+	•	Implement a simple spaced repetition queue: unknown cards return sooner; known cards later.
+	•	Flip animation (kérdés → válasz).
+	•	A kártyatanulás végén mutass statot: hány ismert / ismeretlen.
+	3.	AI Chat – két helyen
+	•	Globális Chat menüpont: szabad kérdezés (általános tanulás).
+	•	Téma-chat egy adott feltöltött anyag/kártyacsomag oldalán: a válaszokat kifejezetten az adott anyagra alapozza (pass the source text context).
+	•	Mindkettő az OpenAI API-t használja; ha nincs kulcs beállítva, jelenjen meg szép figyelmeztetés.
+	4.	Fókusz mód (Pomodoro)
+	•	25:00 indító/újra gomb, körkörös progressz gyűrű.
+	•	Csalásfigyelés (MVP):
+	•	Ha a fókusz oldalt elhagyja vagy 10+ másodpercre inaktív, jelezz „Fókusz megszakadt” státuszt, és ne járjon teljes XP.
+	•	Helyes válaszok számlálását az app számolja a swipe-olt kártyák alapján, nem a felhasználó írja be.
+	•	XP számítás: XP = fókusz perc × 2 + helyes kártyák × 5.
+	•	Szintek: készíts elő egy „Állatkák” progressz rendszert (csak UI placeholder most, lásd alább).
+	5.	Tárolás (MVP)
+	•	Töltsd fel és mentsd a „Dossziékat” (anyag + kártyák + statok) local storage-ben; tedd könnyen cserélhetővé egy későbbi DB-re.
+	•	Haladás nézeten mutass napi aktivitás sávot és alap statokat (tanult idő, kártyák).
+
+Theming & Design
+	•	Implement light/dark toggle.
+	•	Minimal, airy spacing, accessible font sizes, rounded corners.
+	•	Accent color paraméterezhető (alap: deep blue).
+	•	No green accent by default.
+
+Tech
+	•	Frontend: React + TypeScript + Vite (or Next.js CSR) + Tailwind.
+	•	State: lightweight (Zustand or Context).
+	•	API wrapper for OpenAI in a single service file using the key from settings.
+	•	Clear folders: /views, /components, /services, /store, /styles.
+
+Deliverables
+	•	Fully running MVP with the screens: Funkciók, Feltöltés, Kártyák (egy csomag nézet), Chat (globális), Fókusz mód, Haladás, Beállítások (OpenAI kulcs).
+	•	Demo seeds: 1 minta anyag + 6 generált kártya.
+	•	Environment handling for the OpenAI key (.env).
+	•	Clear README in English with setup, env, and how to change the accent color.
+
+Important: keep all strings in Hungarian; code comments in English are fine.
