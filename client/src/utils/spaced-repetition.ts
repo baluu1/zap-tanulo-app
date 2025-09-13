@@ -82,21 +82,17 @@ export function calculateXP(focusMinutes: number, correctCards: number, focusInt
   return Math.max(0, xp);
 }
 
-// Level progression system
+// Level progression system based on XP-based animal progression
 export const ANIMALS = [
-  { level: 1, name: "Kezdő Nyúl", minXP: 0 },
-  { level: 2, name: "Okos Bagoly", minXP: 100 },
-  { level: 3, name: "Gyors Gepárd", minXP: 300 },
-  { level: 4, name: "Erős Medve", minXP: 600 },
-  { level: 5, name: "Villám Nyúl", minXP: 1000 },
-  { level: 6, name: "Bölcs Elefánt", minXP: 1500 },
-  { level: 7, name: "Büszke Sas", minXP: 2100 },
-  { level: 8, name: "Ravasz Róka", minXP: 2800 },
-  { level: 9, name: "Hatalmas Oroszlán", minXP: 3600 },
-  { level: 10, name: "Legendás Sárkány", minXP: 4500 },
+  { level: 1, name: "Hangya", minXP: 0, icon: "🐜" },
+  { level: 2, name: "Egér", minXP: 101, icon: "🐭" },
+  { level: 3, name: "Nyúl", minXP: 301, icon: "🐰" },
+  { level: 4, name: "Bagoly", minXP: 701, icon: "🦉" },
+  { level: 5, name: "Delfin", minXP: 1201, icon: "🐬" },
+  { level: 6, name: "Főnix", minXP: 1801, icon: "🔥" },
 ];
 
-export function getAnimalForXP(xp: number): { level: number; name: string; minXP: number; nextXP?: number } {
+export function getAnimalForXP(xp: number): { level: number; name: string; minXP: number; nextXP?: number; icon: string } {
   const currentAnimal = ANIMALS.slice().reverse().find(animal => xp >= animal.minXP) || ANIMALS[0];
   const nextAnimal = ANIMALS.find(animal => animal.level > currentAnimal.level);
   

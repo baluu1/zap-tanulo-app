@@ -10,9 +10,9 @@ import {
   Clock, 
   Book, 
   Calculator, 
-  Zap,
   Upload
 } from 'lucide-react';
+import { ANIMALS } from '@/utils/spaced-repetition';
 
 export default function ProgressPage() {
   // Query for user data
@@ -282,7 +282,9 @@ export default function ProgressPage() {
               
               {/* Animal Avatar */}
               <div className="bg-primary/10 w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center" data-testid="animal-avatar">
-                <Zap className="w-12 h-12 text-primary" />
+                <span className="text-4xl" role="img" aria-label={currentAnimal.name}>
+                  {currentAnimal.icon}
+                </span>
               </div>
               
               <h4 className="text-xl font-bold text-card-foreground mb-2" data-testid="current-level">
@@ -304,6 +306,54 @@ export default function ProgressPage() {
                 <p className="text-xs text-muted-foreground">
                   {currentAnimal.nextXP ? Math.max(0, currentAnimal.nextXP - displayXP) : 0} XP a következő szintig
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Animal Progression */}
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold text-card-foreground mb-4">Szintek</h3>
+              <div className="space-y-2" data-testid="animal-progression">
+                {ANIMALS.map((animal, index) => {
+                  const isUnlocked = displayXP >= animal.minXP;
+                  const isCurrent = currentAnimal.level === animal.level;
+                  
+                  return (
+                    <div 
+                      key={index}
+                      className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${
+                        isCurrent 
+                          ? 'bg-primary/10 border border-primary/20' 
+                          : isUnlocked 
+                          ? 'bg-muted/50' 
+                          : 'opacity-50'
+                      }`}
+                      data-testid={`animal-level-${animal.level}`}
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        isUnlocked ? 'bg-primary/20' : 'bg-muted'
+                      }`}>
+                        <span className="text-lg" role="img" aria-label={animal.name}>
+                          {animal.icon}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className={`text-sm font-medium ${
+                          isUnlocked ? 'text-card-foreground' : 'text-muted-foreground'
+                        }`}>
+                          {animal.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {animal.minXP} XP{isCurrent ? ' (jelenlegi)' : ''}
+                        </p>
+                      </div>
+                      {isCurrent && (
+                        <div className="w-2 h-2 bg-primary rounded-full"></div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
