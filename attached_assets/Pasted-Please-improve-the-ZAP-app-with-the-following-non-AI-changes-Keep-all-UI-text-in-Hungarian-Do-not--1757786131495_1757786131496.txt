@@ -1,0 +1,67 @@
+Please improve the ZAP app with the following non-AI changes. Keep all UI text in Hungarian. Do not require an OpenAI key for anything in this task.
+	1.	Cards UX — manual creation & study (no AI)
+
+	•	Add a clear “Paklik” overview page at /cards:
+	•	Show a list of decks (paklik) with: name, #cards, due today, last studied.
+	•	Empty state should encourage: “Hozz létre egy paklit” + “Importálás (CSV/TSV)” (optional import later).
+	•	New deck flow:
+	•	Button: “Új pakli”.
+	•	Deck editor with “Új kártya” inline form: Kérdés (front) + Válasz (back).
+	•	Save cards locally (localStorage / IndexedDB). No AI required.
+	•	Study mode with swipe:
+	•	Card viewer with big tap/swipe zones: Jobbra = Tudom, Balra = Nem tudom.
+	•	Keyboard shortcuts (→ and ←) on desktop.
+	•	Simple spaced repetition: unknown = sooner, known = later (use local timestamps).
+	•	Session summary: correct/incorrect counts, next due time.
+	•	Move “Kártyák nehézségi szintje” setting from Beállítások into the Cards page (applies to SRS intervals).
+
+	2.	Separate “Feltöltés & Szövegbevitel” from Cards
+
+	•	Keep /upload focused on paste/upload only (text area + file picker that already works on mobile).
+	•	Do NOT link to Cards automatically; instead show two distinct buttons:
+	•	“Összefoglaló (AI szükséges)” — disabled until API key is set (show tooltip).
+	•	“Kártyák kézi létrehozása” — takes the user to the deck editor and pre-fills suggested Q/A fields with selected text, without calling AI.
+	•	On /upload, add a right-side panel named “Feldolgozott tartalom” as a preview area for parsed text only (no AI yet).
+
+	3.	Progress page — remove placeholders, wire up real data
+
+	•	Replace fake stats with real local metrics:
+	•	Tanult percek (from Focus sessions),
+	•	Tanult kártyák (from study sessions),
+	•	Fókusz munkamenetek száma,
+	•	Összes XP (simple: focusMinutes2 + correctCards5).
+	•	“Legutóbbi aktivitás” should list the last 5 events (card study, focus start/stop, new deck).
+
+	4.	Focus mode polish (no cheat detection yet)
+
+	•	Keep the 25:00 timer; after “Indítás”, disable page-navigation buttons in the UI (soft lock) and show a subtle info banner: “Maradj a fókuszban!”.
+	•	Session end modal: ask for “Helyes kártyák” number OR (if a study session happened in the last 30 min) auto-read that count from the study log and prefill it.
+	•	Compute XP and update Progress.
+
+	5.	Accent color + cozy feel
+
+	•	Fix the accent color setting so it updates buttons/links/progress bars globally. Provide theme presets (user-selectable in Beállítások):
+	•	“Alap” (kék #3B82F6),
+	•	“Lila” (#7C3AED),
+	•	“Zöld” (#10B981),
+	•	“Borostyán” (#F59E0B).
+	•	Keep light/dark toggle working.
+
+	6.	Animal levels (visual only, no logic yet)
+
+	•	Show a small animal badge + name on the Progress page based on XP ranges (just map current XP to a level):
+	•	Hangya (≤100), Egér (≤300), Nyúl (≤700), Bagoly (≤1200), Delfin (≤1800), Főnix (>1800).
+	•	Use simple inline SVG/emoji/placeholder icons now; no 3D needed.
+
+	7.	Copy & nav polish
+
+	•	Ensure the brand name is ZAP in the header everywhere.
+	•	In the navbar keep: Funkciók, Kártyák, Fókusz mód, Feltöltés, Haladás, Regisztráció / Belépés.
+	•	Hungarian labels only; English code comments are fine.
+
+Acceptance criteria:
+	•	I can create a deck, add multiple cards manually, and study them with left/right actions on desktop and mobile.
+	•	Progress numbers update from real sessions (focus + cards).
+	•	Accent color presets actually recolor CTAs and progress bars.
+	•	Upload page no longer feels like Cards; it offers manual-cards as a separate, AI-free flow.
+	•	Animal badge and name render on Progress according to total XP.
