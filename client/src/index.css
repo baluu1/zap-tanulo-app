@@ -52,6 +52,38 @@
   --spacing: 0.25rem;
 }
 
+/* Accent Color Themes */
+.accent-blue {
+  /* Blue/Kék (Default) - already set above */
+}
+
+.accent-purple {
+  --primary: hsl(262.1 83.3% 57.8%);
+  --primary-foreground: hsl(210 40% 98%);
+  --ring: hsl(262.1 83.3% 57.8%);
+  --chart-1: hsl(262.1 83.3% 57.8%);
+  --sidebar-primary: hsl(262.1 83.3% 57.8%);
+  --sidebar-ring: hsl(262.1 83.3% 57.8%);
+}
+
+.accent-green {
+  --primary: hsl(142.1 76.2% 36.3%);
+  --primary-foreground: hsl(210 40% 98%);
+  --ring: hsl(142.1 76.2% 36.3%);
+  --chart-1: hsl(142.1 76.2% 36.3%);
+  --sidebar-primary: hsl(142.1 76.2% 36.3%);
+  --sidebar-ring: hsl(142.1 76.2% 36.3%);
+}
+
+.accent-amber {
+  --primary: hsl(47.9 95.8% 53.1%);
+  --primary-foreground: hsl(26 83.3% 14.1%);
+  --ring: hsl(47.9 95.8% 53.1%);
+  --chart-1: hsl(47.9 95.8% 53.1%);
+  --sidebar-primary: hsl(47.9 95.8% 53.1%);
+  --sidebar-ring: hsl(47.9 95.8% 53.1%);
+}
+
 .dark {
   /* Dark theme colors - Deep Blue accent theme */
   --background: hsl(222.2 84% 4.9%);
@@ -90,6 +122,34 @@
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
   --radius: 0.5rem;
+}
+
+/* Dark theme accent color overrides */
+.dark.accent-purple {
+  --primary: hsl(263.4 70% 50.4%);
+  --primary-foreground: hsl(210 40% 98%);
+  --ring: hsl(263.4 70% 50.4%);
+  --chart-1: hsl(263.4 70% 50.4%);
+  --sidebar-primary: hsl(263.4 70% 50.4%);
+  --sidebar-ring: hsl(263.4 70% 50.4%);
+}
+
+.dark.accent-green {
+  --primary: hsl(142.1 70.6% 45.3%);
+  --primary-foreground: hsl(144.9 80.4% 10%);
+  --ring: hsl(142.1 70.6% 45.3%);
+  --chart-1: hsl(142.1 70.6% 45.3%);
+  --sidebar-primary: hsl(142.1 70.6% 45.3%);
+  --sidebar-ring: hsl(142.1 70.6% 45.3%);
+}
+
+.dark.accent-amber {
+  --primary: hsl(47.9 95.8% 53.1%);
+  --primary-foreground: hsl(26 83.3% 14.1%);
+  --ring: hsl(47.9 95.8% 53.1%);
+  --chart-1: hsl(47.9 95.8% 53.1%);
+  --sidebar-primary: hsl(47.9 95.8% 53.1%);
+  --sidebar-ring: hsl(47.9 95.8% 53.1%);
 }
 
 @layer base {

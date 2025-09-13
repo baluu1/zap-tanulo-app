@@ -27,13 +27,13 @@ export function ThemeProvider({
   storageKey = 'zap-ui-theme',
   ...props
 }: ThemeProviderProps) {
-  const { theme, setTheme: setStoreTheme } = useStore();
+  const { theme, setTheme: setStoreTheme, accentColor } = useStore();
 
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
 
-    if (theme === 'system') {
+    if (theme === 'auto') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
         ? 'dark'
         : 'light';
@@ -43,6 +43,18 @@ export function ThemeProvider({
 
     root.classList.add(theme);
   }, [theme]);
+
+  // Apply accent color theme
+  useEffect(() => {
+    const root = window.document.documentElement;
+    // Remove all accent color classes
+    root.classList.remove('accent-blue', 'accent-purple', 'accent-green', 'accent-amber');
+    
+    // Apply current accent color class
+    if (accentColor) {
+      root.classList.add(`accent-${accentColor}`);
+    }
+  }, [accentColor]);
 
   const value = {
     theme: theme as Theme,

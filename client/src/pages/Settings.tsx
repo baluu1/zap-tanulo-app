@@ -228,11 +228,10 @@ export default function Settings() {
   }
 
   const accentColors = [
-    { name: 'Kék', value: 'blue', color: 'bg-blue-600' },
-    { name: 'Zöld', value: 'green', color: 'bg-green-600' },
+    { name: 'Alap/Kék', value: 'blue', color: 'bg-blue-600' },
     { name: 'Lila', value: 'purple', color: 'bg-purple-600' },
-    { name: 'Piros', value: 'red', color: 'bg-red-600' },
-    { name: 'Sárga', value: 'yellow', color: 'bg-yellow-600' },
+    { name: 'Zöld', value: 'green', color: 'bg-green-600' },
+    { name: 'Borostyán', value: 'amber', color: 'bg-amber-500' },
     { name: 'Indigo', value: 'indigo', color: 'bg-indigo-600' },
   ];
 
