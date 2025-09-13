@@ -24,8 +24,18 @@ export const materials = pgTable("materials", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const decks = pgTable("decks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  lastStudied: timestamp("last_studied"),
+});
+
 export const flashcards = pgTable("flashcards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  deckId: varchar("deck_id").references(() => decks.id),
   materialId: varchar("material_id").references(() => materials.id),
   userId: varchar("user_id").references(() => users.id),
   question: text("question").notNull(),
@@ -72,6 +82,12 @@ export const insertMaterialSchema = createInsertSchema(materials).omit({
   createdAt: true,
 });
 
+export const insertDeckSchema = createInsertSchema(decks).omit({
+  id: true,
+  createdAt: true,
+  lastStudied: true,
+});
+
 export const insertFlashcardSchema = createInsertSchema(flashcards).omit({
   id: true,
   createdAt: true,
@@ -92,6 +108,8 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Material = typeof materials.$inferSelect;
 export type InsertMaterial = z.infer<typeof insertMaterialSchema>;
+export type Deck = typeof decks.$inferSelect;
+export type InsertDeck = z.infer<typeof insertDeckSchema>;
 export type Flashcard = typeof flashcards.$inferSelect;
 export type InsertFlashcard = z.infer<typeof insertFlashcardSchema>;
 export type StudySession = typeof studySessions.$inferSelect;

@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { openaiService } from "./services/openai";
-import { insertMaterialSchema, insertFlashcardSchema, insertStudySessionSchema, insertSettingsSchema } from "@shared/schema";
+import { insertMaterialSchema, insertDeckSchema, insertFlashcardSchema, insertStudySessionSchema, insertSettingsSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -118,6 +118,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: isWorking });
     } catch (error) {
       res.json({ success: false });
+    }
+  });
+
+  // Decks
+  app.get("/api/decks", async (req, res) => {
+    try {
+      const decks = await storage.getDecksByUserId("demo");
+      res.json(decks);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch decks" });
+    }
+  });
+
+  app.get("/api/decks/:id", async (req, res) => {
+    try {
+      const deck = await storage.getDeck(req.params.id);
+      if (!deck) {
+        return res.status(404).json({ error: "Deck not found" });
+      }
+      res.json(deck);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch deck" });
+    }
+  });
+
+  app.post("/api/decks", async (req, res) => {
+    try {
+      const validatedData = insertDeckSchema.parse({
+        ...req.body,
+        userId: "demo" // For demo purposes
+      });
+      const deck = await storage.createDeck(validatedData);
+      res.json(deck);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid deck data" });
+    }
+  });
+
+  app.put("/api/decks/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateDeck(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Deck not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update deck" });
+    }
+  });
+
+  app.delete("/api/decks/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteDeck(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Deck not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete deck" });
+    }
+  });
+
+  app.get("/api/decks/:id/cards", async (req, res) => {
+    try {
+      const cards = await storage.getFlashcardsByDeckId(req.params.id);
+      res.json(cards);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch cards" });
+    }
+  });
+
+  app.get("/api/decks/:id/review", async (req, res) => {
+    try {
+      const cards = await storage.getFlashcardsForReviewByDeck(req.params.id);
+      res.json(cards);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch cards for review" });
     }
   });
 

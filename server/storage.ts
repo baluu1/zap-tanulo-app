@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Material, type InsertMaterial, type Flashcard, type InsertFlashcard, type StudySession, type InsertStudySession, type Settings, type InsertSettings } from "@shared/schema";
+import { type User, type InsertUser, type Material, type InsertMaterial, type Deck, type InsertDeck, type Flashcard, type InsertFlashcard, type StudySession, type InsertStudySession, type Settings, type InsertSettings } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -16,10 +16,19 @@ export interface IStorage {
   updateMaterial(id: string, updates: Partial<Material>): Promise<Material | undefined>;
   deleteMaterial(id: string): Promise<boolean>;
 
+  // Decks
+  getDecksByUserId(userId: string): Promise<Deck[]>;
+  getDeck(id: string): Promise<Deck | undefined>;
+  createDeck(deck: InsertDeck): Promise<Deck>;
+  updateDeck(id: string, updates: Partial<Deck>): Promise<Deck | undefined>;
+  deleteDeck(id: string): Promise<boolean>;
+
   // Flashcards
+  getFlashcardsByDeckId(deckId: string): Promise<Flashcard[]>;
   getFlashcardsByMaterialId(materialId: string): Promise<Flashcard[]>;
   getFlashcardsByUserId(userId: string): Promise<Flashcard[]>;
   getFlashcardsForReview(userId: string): Promise<Flashcard[]>;
+  getFlashcardsForReviewByDeck(deckId: string): Promise<Flashcard[]>;
   getFlashcard(id: string): Promise<Flashcard | undefined>;
   createFlashcard(flashcard: InsertFlashcard): Promise<Flashcard>;
   updateFlashcard(id: string, updates: Partial<Flashcard>): Promise<Flashcard | undefined>;
@@ -37,6 +46,7 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private users: Map<string, User> = new Map();
   private materials: Map<string, Material> = new Map();
+  private decks: Map<string, Deck> = new Map();
   private flashcards: Map<string, Flashcard> = new Map();
   private studySessions: Map<string, StudySession> = new Map();
   private settings: Map<string, Settings> = new Map();
@@ -46,8 +56,8 @@ export class MemStorage implements IStorage {
   }
 
   private seedData() {
-    // Create demo user
-    const userId = randomUUID();
+    // Create demo user with fixed "demo" ID for consistency
+    const userId = "demo";
     const user: User = {
       id: userId,
       username: "demo",
@@ -73,6 +83,18 @@ export class MemStorage implements IStorage {
     };
     this.materials.set(materialId, material);
 
+    // Create demo deck
+    const deckId = randomUUID();
+    const deck: Deck = {
+      id: deckId,
+      userId,
+      name: "Magyar történelem",
+      description: "Árpád-házi királyok és a korai magyar államiság",
+      createdAt: new Date(),
+      lastStudied: null,
+    };
+    this.decks.set(deckId, deck);
+
     // Create demo flashcards
     const flashcardData = [
       { question: "Mikor kezdődött az Árpád-ház uralma Magyarországon?", answer: "896-ban, amikor Árpád vezér és a magyarok betelepedtek a Kárpát-medencébe." },
@@ -87,6 +109,7 @@ export class MemStorage implements IStorage {
       const flashcardId = randomUUID();
       const flashcard: Flashcard = {
         id: flashcardId,
+        deckId,
         materialId,
         userId,
         question: card.question,
@@ -172,7 +195,39 @@ export class MemStorage implements IStorage {
     return this.materials.delete(id);
   }
 
+  // Decks
+  async getDecksByUserId(userId: string): Promise<Deck[]> {
+    return Array.from(this.decks.values()).filter(deck => deck.userId === userId);
+  }
+
+  async getDeck(id: string): Promise<Deck | undefined> {
+    return this.decks.get(id);
+  }
+
+  async createDeck(insertDeck: InsertDeck): Promise<Deck> {
+    const id = randomUUID();
+    const deck: Deck = { ...insertDeck, id, createdAt: new Date(), lastStudied: null };
+    this.decks.set(id, deck);
+    return deck;
+  }
+
+  async updateDeck(id: string, updates: Partial<Deck>): Promise<Deck | undefined> {
+    const deck = this.decks.get(id);
+    if (!deck) return undefined;
+    const updated = { ...deck, ...updates };
+    this.decks.set(id, updated);
+    return updated;
+  }
+
+  async deleteDeck(id: string): Promise<boolean> {
+    return this.decks.delete(id);
+  }
+
   // Flashcards
+  async getFlashcardsByDeckId(deckId: string): Promise<Flashcard[]> {
+    return Array.from(this.flashcards.values()).filter(card => card.deckId === deckId);
+  }
+
   async getFlashcardsByMaterialId(materialId: string): Promise<Flashcard[]> {
     return Array.from(this.flashcards.values()).filter(card => card.materialId === materialId);
   }
@@ -184,8 +239,15 @@ export class MemStorage implements IStorage {
   async getFlashcardsForReview(userId: string): Promise<Flashcard[]> {
     const now = new Date();
     return Array.from(this.flashcards.values())
-      .filter(card => card.userId === userId && card.nextReview <= now)
-      .sort((a, b) => a.nextReview.getTime() - b.nextReview.getTime());
+      .filter(card => card.userId === userId && card.nextReview && card.nextReview <= now)
+      .sort((a, b) => (a.nextReview?.getTime() || 0) - (b.nextReview?.getTime() || 0));
+  }
+
+  async getFlashcardsForReviewByDeck(deckId: string): Promise<Flashcard[]> {
+    const now = new Date();
+    return Array.from(this.flashcards.values())
+      .filter(card => card.deckId === deckId && card.nextReview && card.nextReview <= now)
+      .sort((a, b) => (a.nextReview?.getTime() || 0) - (b.nextReview?.getTime() || 0));
   }
 
   async getFlashcard(id: string): Promise<Flashcard | undefined> {

@@ -1,141 +1,129 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import FlashCard from '@/components/FlashCard';
-import { api } from '@/services/api';
-import useStore from '@/store/useStore';
-import { calculateNextReview, sortCardsByPriority, calculateXP } from '@/utils/spaced-repetition';
-import { ArrowLeft, ArrowRight, RotateCcw } from 'lucide-react';
+import { Plus, BookOpen, Clock, Calendar, Settings, Trash2, Edit3 } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
+import type { Deck, Flashcard } from '@shared/schema';
+
+interface DeckStats {
+  totalCards: number;
+  dueToday: number;
+  lastStudied: string | null;
+}
 
 export default function Cards() {
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [sessionStats, setSessionStats] = useState({ known: 0, unknown: 0 });
-  const [sessionComplete, setSessionComplete] = useState(false);
-  const [sessionCards, setSessionCards] = useState<any[]>([]);
+  const [showNewDeckForm, setShowNewDeckForm] = useState(false);
+  const [newDeckName, setNewDeckName] = useState('');
+  const [newDeckDescription, setNewDeckDescription] = useState('');
   
-  const { flashcardSession, setFlashcardSession, resetFlashcardSession } = useStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Query for flashcards that need review
-  const { data: allCards = [], isLoading } = useQuery({
-    queryKey: ['/api/flashcards/review'],
+  // Query for decks
+  const { data: decks = [], isLoading } = useQuery({
+    queryKey: ['/api/decks'],
+    refetchOnWindowFocus: false,
+  }) as { data: Deck[]; isLoading: boolean };
+
+  // Create deck mutation
+  const createDeckMutation = useMutation({
+    mutationFn: async (data: { name: string; description?: string }) => {
+      const response = await apiRequest('/api/decks', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/decks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/decks', 'with-stats'] });
+      setShowNewDeckForm(false);
+      setNewDeckName('');
+      setNewDeckDescription('');
+      toast({
+        title: "Pakli létrehozva!",
+        description: "Az új pakli sikeresen létrehozva.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Hiba!",
+        description: "Nem sikerült létrehozni a paklit.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Fetch deck cards for stats
+  const deckQueries = decks.map((deck: Deck) => ({
+    queryKey: [`/api/decks/${deck.id}/cards`],
+    enabled: !!deck.id,
+  }));
+  
+  const deckReviewQueries = decks.map((deck: Deck) => ({
+    queryKey: [`/api/decks/${deck.id}/review`],
+    enabled: !!deck.id,
+  }));
+
+  // Function to get real deck stats
+  const getDeckStats = (deck: Deck): DeckStats => {
+    // Get cards data from query cache
+    const cardsData = queryClient.getQueryData([`/api/decks/${deck.id}/cards`]) as Flashcard[] | undefined;
+    const reviewData = queryClient.getQueryData([`/api/decks/${deck.id}/review`]) as Flashcard[] | undefined;
+    
+    return {
+      totalCards: cardsData?.length || 0,
+      dueToday: reviewData?.length || 0,
+      lastStudied: deck.lastStudied ? new Date(deck.lastStudied).toLocaleDateString('hu-HU') : null
+    };
+  };
+  
+  // Fetch cards for each deck to get real stats
+  const deckCardQueries = useQuery({
+    queryKey: ['/api/decks', 'with-stats'],
+    queryFn: async () => {
+      if (!decks || decks.length === 0) return [];
+      
+      const decksWithStats = await Promise.all(
+        (decks as Deck[]).map(async (deck: Deck) => {
+          const [cards, reviewCards] = await Promise.all([
+            fetch(`/api/decks/${deck.id}/cards`).then(r => r.json()),
+            fetch(`/api/decks/${deck.id}/review`).then(r => r.json())
+          ]);
+          
+          // Cache the results for individual queries
+          queryClient.setQueryData([`/api/decks/${deck.id}/cards`], cards);
+          queryClient.setQueryData([`/api/decks/${deck.id}/review`], reviewCards);
+          
+          return { ...deck, cards, reviewCards };
+        })
+      );
+      return decksWithStats;
+    },
+    enabled: Array.isArray(decks) && decks.length > 0,
     refetchOnWindowFocus: false,
   });
 
-  // Update flashcard mutation
-  const updateCardMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => api.updateFlashcard(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/flashcards'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/flashcards/review'] });
-    }
-  });
-
-  // Create study session mutation
-  const createSessionMutation = useMutation({
-    mutationFn: (data: any) => api.createStudySession(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/study-sessions'] });
-    }
-  });
-
-  // Initialize session when cards are loaded
-  useEffect(() => {
-    if (allCards.length > 0 && sessionCards.length === 0) {
-      const sortedCards = sortCardsByPriority(allCards).slice(0, 12); // Limit to 12 cards per session
-      setSessionCards(sortedCards);
-      setFlashcardSession({
-        cards: sortedCards,
-        currentIndex: 0,
-        correctCount: 0,
-        incorrectCount: 0,
-        sessionStartTime: new Date(),
-      });
-    }
-  }, [allCards, sessionCards.length, setFlashcardSession]);
-
-  const currentCard = sessionCards[currentCardIndex];
-  const progress = sessionCards.length > 0 ? ((currentCardIndex) / sessionCards.length) * 100 : 0;
-
-  const handleCardResponse = async (known: boolean) => {
-    if (!currentCard) return;
-
-    const review = {
-      correct: known,
-      difficulty: currentCard.difficulty || 1,
-    };
-
-    const { nextInterval, nextReviewDate, newDifficulty } = calculateNextReview(
-      review,
-      1 // Previous interval - simplified for demo
-    );
-
-    // Update card in database
-    await updateCardMutation.mutateAsync({
-      id: currentCard.id,
-      data: {
-        difficulty: newDifficulty,
-        nextReview: nextReviewDate,
-        lastReviewed: new Date(),
-        correctCount: known ? currentCard.correctCount + 1 : currentCard.correctCount,
-        incorrectCount: known ? currentCard.incorrectCount : currentCard.incorrectCount + 1,
-      }
-    });
-
-    // Update session stats
-    const newStats = {
-      known: sessionStats.known + (known ? 1 : 0),
-      unknown: sessionStats.unknown + (known ? 0 : 1),
-    };
-    setSessionStats(newStats);
-
-    // Update store
-    setFlashcardSession({
-      correctCount: newStats.known,
-      incorrectCount: newStats.unknown,
-    });
-
-    // Move to next card or finish session
-    if (currentCardIndex < sessionCards.length - 1) {
-      setCurrentCardIndex(currentCardIndex + 1);
-    } else {
-      // Session complete
-      setSessionComplete(true);
-      
-      // Calculate XP and save session
-      const sessionDuration = flashcardSession.sessionStartTime 
-        ? Math.floor((Date.now() - flashcardSession.sessionStartTime.getTime()) / (1000 * 60))
-        : 0;
-      
-      const xp = calculateXP(0, newStats.known, false); // No focus time for card-only sessions
-      
-      await createSessionMutation.mutateAsync({
-        type: 'cards',
-        duration: sessionDuration,
-        xpEarned: xp,
-        cardsStudied: sessionCards.length,
-        correctCards: newStats.known,
-        focusInterrupted: false,
-      });
-
+  const handleCreateDeck = () => {
+    if (!newDeckName.trim()) {
       toast({
-        title: "Munkamenet befejezve!",
-        description: `${newStats.known} ismert, ${newStats.unknown} ismeretlen kártya. +${xp} XP szerzett!`,
+        title: "Hiba!",
+        description: "A pakli név megadása kötelező.",
+        variant: "destructive",
       });
+      return;
     }
-  };
 
-  const resetSession = () => {
-    setCurrentCardIndex(0);
-    setSessionStats({ known: 0, unknown: 0 });
-    setSessionComplete(false);
-    setSessionCards([]);
-    resetFlashcardSession();
-    queryClient.invalidateQueries({ queryKey: ['/api/flashcards/review'] });
+    createDeckMutation.mutate({
+      name: newDeckName.trim(),
+      description: newDeckDescription.trim() || undefined
+    });
   };
 
   if (isLoading) {
@@ -143,177 +131,214 @@ export default function Cards() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Kártyák betöltése...</p>
+          <p className="text-muted-foreground">Paklik betöltése...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (allCards.length === 0) {
-    return (
-      <div className="text-center">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Kártyák</h1>
-          <p className="text-muted-foreground">Nincs áttekintendő kártya</p>
-        </div>
-        
-        <Card className="max-w-md mx-auto">
-          <CardContent className="p-8 text-center">
-            <div className="text-6xl mb-4">🎉</div>
-            <h3 className="text-lg font-semibold mb-2">Minden kártya naprakész!</h3>
-            <p className="text-muted-foreground mb-4">
-              Jelenleg nincs olyan kártya, amit gyakorolnod kellene. Térj vissza később, vagy hozz létre új kártyákat.
-            </p>
-            <Button onClick={() => window.location.href = '/upload'} data-testid="button-create-cards">
-              Új kártyák létrehozása
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (sessionComplete) {
-    return (
-      <div className="text-center">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Kártyák</h1>
-          <p className="text-muted-foreground">Munkamenet befejezve</p>
-        </div>
-
-        <Card className="max-w-md mx-auto" data-testid="session-stats">
-          <CardContent className="p-6">
-            <h3 className="text-lg font-semibold text-card-foreground mb-4 text-center">
-              Munkamenet befejezve!
-            </h3>
-            <div className="grid grid-cols-2 gap-4 text-center mb-6">
-              <div>
-                <div className="text-2xl font-bold text-green-600" data-testid="known-count">
-                  {sessionStats.known}
-                </div>
-                <div className="text-sm text-muted-foreground">Ismert</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-destructive" data-testid="unknown-count">
-                  {sessionStats.unknown}
-                </div>
-                <div className="text-sm text-muted-foreground">Ismeretlen</div>
-              </div>
-            </div>
-            <Button 
-              onClick={resetSession} 
-              className="w-full"
-              data-testid="button-new-session"
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Új munkamenet
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Kártyák</h1>
-        <p className="text-muted-foreground">Swipe jobbra ha tudod, balra ha nem tudod</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Paklik</h1>
+          <p className="text-muted-foreground mt-2">
+            Kezeld a kártyáidat paklikban a hatékony tanulásért
+          </p>
+        </div>
+        <Button
+          onClick={() => setShowNewDeckForm(true)}
+          className="flex items-center gap-2"
+          data-testid="button-new-deck"
+        >
+          <Plus className="h-4 w-4" />
+          Új pakli
+        </Button>
       </div>
 
-      <div className="max-w-md mx-auto">
-        {/* Card Display */}
-        <div className="relative h-96 mb-8">
-          {currentCard && (
-            <FlashCard
-              question={currentCard.question}
-              answer={currentCard.answer}
-              onKnown={() => handleCardResponse(true)}
-              onUnknown={() => handleCardResponse(false)}
-              className="absolute inset-0"
-            />
-          )}
-
-          {/* Next card preview */}
-          {currentCardIndex < sessionCards.length - 1 && (
-            <Card className="absolute inset-0 transform scale-95 -translate-y-2 opacity-50 pointer-events-none" style={{ zIndex: -1 }}>
-              <CardContent className="p-6 h-full flex items-center justify-center">
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold text-card-foreground">
-                    {sessionCards[currentCardIndex + 1]?.question}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-4">Következő kártya</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Swipe Instructions */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center text-destructive">
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            <span className="text-sm">Nem tudom</span>
-          </div>
-          <div className="flex items-center text-green-600">
-            <span className="text-sm">Tudom</span>
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </div>
-        </div>
-
-        {/* Progress */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-muted-foreground">Haladás</span>
-              <span className="text-sm font-semibold text-card-foreground" data-testid="card-progress">
-                {currentCardIndex + 1}/{sessionCards.length}
-              </span>
+      {/* New Deck Form */}
+      {showNewDeckForm && (
+        <Card className="border-primary/20" data-testid="new-deck-form">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Új pakli létrehozása
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label htmlFor="deck-name" className="block text-sm font-medium mb-2">
+                Pakli név *
+              </label>
+              <Input
+                id="deck-name"
+                placeholder="pl. Magyar történelem, Matematika..."
+                value={newDeckName}
+                onChange={(e) => setNewDeckName(e.target.value)}
+                data-testid="input-deck-name"
+              />
             </div>
-            <Progress value={progress} className="h-2" />
-          </CardContent>
-        </Card>
-
-        {/* Action Buttons */}
-        <div className="flex gap-4">
-          <Button
-            onClick={() => handleCardResponse(false)}
-            className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            data-testid="button-unknown-main"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Nem tudom
-          </Button>
-          <Button
-            onClick={() => handleCardResponse(true)}
-            className="flex-1 bg-green-600 text-white hover:bg-green-700"
-            data-testid="button-known-main"
-          >
-            Tudom
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </Button>
-        </div>
-
-        {/* Current Session Stats */}
-        <Card className="mt-6">
-          <CardContent className="p-4">
-            <div className="grid grid-cols-2 gap-4 text-center text-sm">
-              <div>
-                <div className="font-semibold text-green-600" data-testid="session-known">
-                  {sessionStats.known}
-                </div>
-                <div className="text-muted-foreground">Ismert ebben a munkamenetben</div>
-              </div>
-              <div>
-                <div className="font-semibold text-destructive" data-testid="session-unknown">
-                  {sessionStats.unknown}
-                </div>
-                <div className="text-muted-foreground">Ismeretlen ebben a munkamenetben</div>
-              </div>
+            <div>
+              <label htmlFor="deck-description" className="block text-sm font-medium mb-2">
+                Leírás (opcionális)
+              </label>
+              <Textarea
+                id="deck-description"
+                placeholder="Rövid leírás a pakliról..."
+                value={newDeckDescription}
+                onChange={(e) => setNewDeckDescription(e.target.value)}
+                data-testid="input-deck-description"
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleCreateDeck}
+                disabled={createDeckMutation.isPending}
+                data-testid="button-create-deck"
+              >
+                {createDeckMutation.isPending ? 'Létrehozás...' : 'Pakli létrehozása'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowNewDeckForm(false);
+                  setNewDeckName('');
+                  setNewDeckDescription('');
+                }}
+                data-testid="button-cancel-deck"
+              >
+                Mégse
+              </Button>
             </div>
           </CardContent>
         </Card>
-      </div>
+      )}
+
+      {/* Empty State */}
+      {decks.length === 0 && !showNewDeckForm && (
+        <Card className="text-center py-12" data-testid="empty-state">
+          <CardContent>
+            <div className="text-6xl mb-4">📚</div>
+            <h3 className="text-lg font-semibold mb-2">Még nincsenek paklik</h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              Hozz létre az első paklidat és kezdj el tanulni rendszerezetten! 
+              Importálhatsz is kártyákat CSV/TSV fájlból.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button
+                onClick={() => setShowNewDeckForm(true)}
+                className="flex items-center gap-2"
+                data-testid="button-create-first-deck"
+              >
+                <Plus className="h-4 w-4" />
+                Hozz létre egy paklit
+              </Button>
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                data-testid="button-import-deck"
+              >
+                <BookOpen className="h-4 w-4" />
+                Importálás (CSV/TSV)
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Decks Grid */}
+      {decks.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {decks.map((deck: Deck) => {
+            const stats = getDeckStats(deck);
+            return (
+              <Card 
+                key={deck.id} 
+                className="hover:shadow-lg transition-shadow cursor-pointer group"
+                data-testid={`deck-card-${deck.id}`}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
+                      {deck.name}
+                    </CardTitle>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                        data-testid={`button-edit-deck-${deck.id}`}
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        data-testid={`button-delete-deck-${deck.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  {deck.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {deck.description}
+                    </p>
+                  )}
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-3">
+                    {/* Stats */}
+                    <div className="flex justify-between text-sm">
+                      <div className="flex items-center gap-1">
+                        <BookOpen className="h-4 w-4 text-muted-foreground" />
+                        <span data-testid={`deck-total-cards-${deck.id}`}>
+                          {stats.totalCards} kártya
+                        </span>
+                      </div>
+                      {stats.dueToday > 0 && (
+                        <Badge variant="secondary" data-testid={`deck-due-cards-${deck.id}`}>
+                          {stats.dueToday} esedékes
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Last Studied */}
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      <span data-testid={`deck-last-studied-${deck.id}`}>
+                        {stats.lastStudied ? `Utoljára: ${stats.lastStudied}` : 'Még nem tanult'}
+                      </span>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 pt-2">
+                      <Button 
+                        size="sm" 
+                        className="flex-1"
+                        data-testid={`button-study-deck-${deck.id}`}
+                      >
+                        <Clock className="h-4 w-4 mr-1" />
+                        Tanulás
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        data-testid={`button-manage-deck-${deck.id}`}
+                      >
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
