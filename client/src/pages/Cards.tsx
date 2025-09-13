@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, BookOpen, Clock, Calendar, Settings, Trash2, Edit3 } from 'lucide-react';
+import { Link } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import type { Deck, Flashcard } from '@shared/schema';
 
@@ -324,13 +325,15 @@ export default function Cards() {
                         <Clock className="h-4 w-4 mr-1" />
                         Tanulás
                       </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        data-testid={`button-manage-deck-${deck.id}`}
-                      >
-                        <Settings className="h-4 w-4" />
-                      </Button>
+                      <Link href={`/cards/${deck.id}`}>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          data-testid={`button-manage-deck-${deck.id}`}
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 </CardContent>

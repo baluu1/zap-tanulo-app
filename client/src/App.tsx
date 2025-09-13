@@ -9,6 +9,7 @@ import NotFound from "@/pages/not-found";
 import Functions from "@/pages/Functions";
 import Upload from "@/pages/Upload";
 import Cards from "@/pages/Cards";
+import DeckManager from "@/pages/DeckManager";
 import Chat from "@/pages/Chat";
 import Focus from "@/pages/Focus";
 import Progress from "@/pages/Progress";
@@ -23,6 +24,7 @@ function Router() {
         <Route path="/functions" component={Functions} />
         <Route path="/upload" component={Upload} />
         <Route path="/cards" component={Cards} />
+        <Route path="/cards/:deckId" component={DeckManager} />
         <Route path="/chat" component={Chat} />
         <Route path="/focus" component={Focus} />
         <Route path="/progress" component={Progress} />

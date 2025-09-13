@@ -242,6 +242,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/flashcards/:id", async (req, res) => {
+    try {
+      const flashcard = await storage.updateFlashcard(req.params.id, req.body);
+      if (!flashcard) {
+        return res.status(404).json({ error: "Flashcard not found" });
+      }
+      res.json(flashcard);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update flashcard" });
+    }
+  });
+
+  app.delete("/api/flashcards/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteFlashcard(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Flashcard not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete flashcard" });
+    }
+  });
+
   // Study Sessions
   app.get("/api/study-sessions", async (req, res) => {
     try {
