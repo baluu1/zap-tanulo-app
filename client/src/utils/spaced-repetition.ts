@@ -4,7 +4,7 @@ export interface CardReview {
   difficulty: number; // 1-5 scale
 }
 
-export function calculateNextReview(review: CardReview, previousInterval: number = 1): {
+export function calculateNextReview(review: CardReview, previousInterval: number = 1, difficultyMultiplier: number = 1.0): {
   nextInterval: number;
   nextReviewDate: Date;
   newDifficulty: number;
@@ -20,10 +20,13 @@ export function calculateNextReview(review: CardReview, previousInterval: number
       interval = Math.ceil(interval * 2.5); // Exponential growth
     }
     
+    // Apply difficulty multiplier to interval
+    interval = Math.ceil(interval * difficultyMultiplier);
+    
     // Slightly reduce difficulty for correct answers
     difficulty = Math.max(1, difficulty - 0.1);
   } else {
-    // Incorrect answer - reset to short interval
+    // Incorrect answer - reset to short interval (always 1 day regardless of multiplier)
     interval = 1;
     
     // Increase difficulty for incorrect answers

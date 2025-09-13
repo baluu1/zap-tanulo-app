@@ -39,9 +39,7 @@ export default function Settings() {
     focusAlerts, 
     setFocusAlerts,
     dailyReminders,
-    setDailyReminders,
-    cardDifficulty,
-    setCardDifficulty
+    setDailyReminders
   } = useStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -147,12 +145,6 @@ export default function Settings() {
     });
   };
 
-  const handleCardDifficultyChange = async (difficulty: string) => {
-    setCardDifficulty(difficulty);
-    await saveSettingsMutation.mutateAsync({
-      cardDifficulty: difficulty,
-    });
-  };
 
   const handleExportData = () => {
     const data = {
@@ -190,7 +182,6 @@ export default function Settings() {
           if (settings.accentColor) setAccentColor(settings.accentColor);
           if (typeof settings.focusAlerts === 'boolean') setFocusAlerts(settings.focusAlerts);
           if (typeof settings.dailyReminders === 'boolean') setDailyReminders(settings.dailyReminders);
-          if (settings.cardDifficulty) setCardDifficulty(settings.cardDifficulty);
           
           toast({ title: "Adatok importálva!", description: "A beállítások sikeresen visszaállítva." });
         }
@@ -216,7 +207,6 @@ export default function Settings() {
       setAccentColor('blue');
       setFocusAlerts(true);
       setDailyReminders(false);
-      setCardDifficulty('medium');
       
       toast({ 
         title: "Adatok törölve!", 
@@ -438,21 +428,6 @@ export default function Settings() {
                 />
               </div>
 
-              <div>
-                <Label className="text-sm font-medium text-card-foreground mb-2">
-                  Kártyák nehézségi szintje
-                </Label>
-                <Select value={cardDifficulty} onValueChange={handleCardDifficultyChange}>
-                  <SelectTrigger data-testid="select-card-difficulty">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="easy">Kezdő</SelectItem>
-                    <SelectItem value="medium">Közepes</SelectItem>
-                    <SelectItem value="hard">Haladó</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
           </CardContent>
         </Card>

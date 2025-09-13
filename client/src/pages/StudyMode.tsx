@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, ArrowRight, RotateCcw, Clock, CheckCircle, XCircle, Home } from 'lucide-react';
 import { calculateNextReview } from '@/utils/spaced-repetition';
+import useStore from '@/store/useStore';
 import type { Deck, Flashcard } from '@shared/schema';
 
 interface StudyStats {
@@ -34,6 +35,7 @@ export default function StudyMode() {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { cardDifficulty } = useStore();
 
   // Query for deck details
   const { data: deck } = useQuery({
@@ -125,7 +127,13 @@ export default function StudyMode() {
   const handleCardResponse = async (known: boolean) => {
     if (!currentCard || !showAnswer) return;
 
-    // Calculate next review using spaced repetition
+    // Calculate next review using spaced repetition with global difficulty setting
+    const difficultyMultiplier = {
+      'easy': 1.5,    // Easier intervals (longer gaps)
+      'medium': 1.0,  // Standard intervals
+      'hard': 0.7     // Harder intervals (shorter gaps)
+    }[cardDifficulty] || 1.0;
+
     const review = {
       correct: known,
       difficulty: currentCard.difficulty || 1,
@@ -135,7 +143,7 @@ export default function StudyMode() {
       ? Math.ceil((Date.now() - new Date(currentCard.lastReviewed).getTime()) / (1000 * 60 * 60 * 24))
       : 1;
 
-    const { nextInterval, nextReviewDate, newDifficulty } = calculateNextReview(review, previousInterval);
+    const { nextInterval, nextReviewDate, newDifficulty } = calculateNextReview(review, previousInterval, difficultyMultiplier);
 
     // Update card in database
     await updateCardMutation.mutateAsync({

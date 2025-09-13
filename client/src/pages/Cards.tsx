@@ -6,9 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, BookOpen, Clock, Calendar, Settings, Trash2, Edit3 } from 'lucide-react';
+import { Plus, BookOpen, Clock, Calendar, Settings, Trash2, Edit3, Target } from 'lucide-react';
 import { Link } from 'wouter';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { apiRequest } from '@/lib/queryClient';
+import useStore from '@/store/useStore';
 import type { Deck, Flashcard } from '@shared/schema';
 
 interface DeckStats {
@@ -24,6 +27,7 @@ export default function Cards() {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { cardDifficulty, setCardDifficulty } = useStore();
 
   // Query for decks
   const { data: decks = [], isLoading } = useQuery({
@@ -148,14 +152,41 @@ export default function Cards() {
             Kezeld a kártyáidat paklikban a hatékony tanulásért
           </p>
         </div>
-        <Button
-          onClick={() => setShowNewDeckForm(true)}
-          className="flex items-center gap-2"
-          data-testid="button-new-deck"
-        >
-          <Plus className="h-4 w-4" />
-          Új pakli
-        </Button>
+        <div className="flex items-center gap-4">
+          {/* Card Difficulty Setting */}
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-muted-foreground" />
+            <div className="min-w-0">
+              <Label className="text-sm font-medium text-foreground mb-1 block">
+                Nehézségi szint
+              </Label>
+              <Select 
+                value={cardDifficulty} 
+                onValueChange={setCardDifficulty}
+              >
+                <SelectTrigger 
+                  className="w-28 h-8 text-xs"
+                  data-testid="select-card-difficulty"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="easy">Kezdő</SelectItem>
+                  <SelectItem value="medium">Közepes</SelectItem>
+                  <SelectItem value="hard">Haladó</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Button
+            onClick={() => setShowNewDeckForm(true)}
+            className="flex items-center gap-2"
+            data-testid="button-new-deck"
+          >
+            <Plus className="h-4 w-4" />
+            Új pakli
+          </Button>
+        </div>
       </div>
 
       {/* New Deck Form */}
