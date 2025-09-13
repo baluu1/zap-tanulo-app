@@ -7,19 +7,19 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/services/api';
 import useStore from '@/store/useStore';
+import { Link } from 'wouter';
 import { 
   FileText, 
-  Layers, 
   UploadCloud, 
   Send, 
   Loader2,
-  AlertTriangle 
+  AlertTriangle,
+  Edit3
 } from 'lucide-react';
 
 export default function Upload() {
   const [text, setText] = useState('');
   const [summary, setSummary] = useState('');
-  const [generatedCards, setGeneratedCards] = useState<Array<{ question: string; answer: string }>>([]);
   const [contextMessage, setContextMessage] = useState('');
   const [currentMaterial, setCurrentMaterial] = useState<any>(null);
   
@@ -48,21 +48,6 @@ export default function Upload() {
     }
   });
 
-  // Generate flashcards mutation
-  const cardsMutation = useMutation({
-    mutationFn: (data: { text: string; apiKey?: string }) => api.generateFlashcards(data.text, data.apiKey),
-    onSuccess: (data) => {
-      setGeneratedCards(data.cards);
-      toast({ title: "Kártyák elkészültek!", description: `${data.cards.length} kártya lett generálva.` });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Hiba történt",
-        description: error.message || "Nem sikerült a kártyákat elkészíteni.",
-        variant: "destructive"
-      });
-    }
-  });
 
   // Create material mutation
   const createMaterialMutation = useMutation({
@@ -75,25 +60,6 @@ export default function Upload() {
     }
   });
 
-  // Save flashcards mutation
-  const saveCardsMutation = useMutation({
-    mutationFn: async (cards: Array<{ question: string; answer: string }>) => {
-      const promises = cards.map(card => 
-        api.createFlashcard({
-          materialId: currentMaterial?.id,
-          question: card.question,
-          answer: card.answer,
-          difficulty: 1,
-          nextReview: new Date()
-        })
-      );
-      return Promise.all(promises);
-    },
-    onSuccess: () => {
-      toast({ title: "Kártyák mentve!", description: "A generált kártyák sikeresen mentve lettek." });
-      queryClient.invalidateQueries({ queryKey: ['/api/flashcards'] });
-    }
-  });
 
   // Chat mutation
   const chatMutation = useMutation({
@@ -133,22 +99,23 @@ export default function Upload() {
     summaryMutation.mutate({ text, apiKey });
   };
 
-  const handleGenerateCards = () => {
-    if (!text.trim()) {
-      toast({ title: "Hiba", description: "Kérlek adj meg szöveget!", variant: "destructive" });
-      return;
-    }
-
-    if (!apiKey) {
-      toast({ 
-        title: "API kulcs hiányzik", 
-        description: "Állítsd be az OpenAI API kulcsot a beállításokban!",
-        variant: "destructive" 
+  const handleManualCardCreation = () => {
+    // Optionally save material if text exists, but don't block navigation
+    if (text.trim()) {
+      const title = text.substring(0, 50) + (text.length > 50 ? '...' : '');
+      createMaterialMutation.mutate({
+        title,
+        content: text,
+        type: 'text',
+        summary
       });
-      return;
+      
+      toast({ 
+        title: "Anyag mentve!", 
+        description: "Most létrehozhatsz kártyákat manuálisan a Paklik oldalon."
+      });
     }
-
-    cardsMutation.mutate({ text, apiKey });
+    // Navigation happens automatically via Link wrapper
   };
 
   const handleSaveMaterial = () => {
@@ -166,15 +133,6 @@ export default function Upload() {
     });
   };
 
-  const handleSaveCards = () => {
-    if (!currentMaterial) {
-      handleSaveMaterial();
-    }
-    
-    if (generatedCards.length > 0) {
-      saveCardsMutation.mutate(generatedCards);
-    }
-  };
 
   const handleSendContextMessage = () => {
     if (!contextMessage.trim() || !currentMaterial) return;
@@ -248,20 +206,18 @@ export default function Upload() {
                   ) : (
                     <FileText className="w-4 h-4 mr-2" />
                   )}
-                  Összefoglaló
+                  Összefoglaló (AI szükséges)
                 </Button>
-                <Button
-                  onClick={handleGenerateCards}
-                  disabled={cardsMutation.isPending || !text.trim()}
-                  data-testid="button-generate-cards"
-                >
-                  {cardsMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Layers className="w-4 h-4 mr-2" />
-                  )}
-                  Kártyák generálása
-                </Button>
+                <Link href="/cards">
+                  <Button
+                    onClick={handleManualCardCreation}
+                    data-testid="button-manual-cards"
+                    variant="outline"
+                  >
+                    <Edit3 className="w-4 h-4 mr-2" />
+                    Kártyák kézi létrehozása
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
@@ -305,39 +261,8 @@ export default function Upload() {
                   </div>
                 )}
                 
-                {generatedCards.length > 0 && (
-                  <div className="p-4 bg-muted rounded-md" data-testid="cards-result">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium text-card-foreground">Generált kártyák</h4>
-                      <Button
-                        size="sm"
-                        onClick={handleSaveCards}
-                        disabled={saveCardsMutation.isPending}
-                        data-testid="button-save-cards"
-                      >
-                        {saveCardsMutation.isPending ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : null}
-                        Mentés
-                      </Button>
-                    </div>
-                    <div className="text-sm text-muted-foreground space-y-2">
-                      {generatedCards.slice(0, 3).map((card, index) => (
-                        <div key={index} className="flex justify-between">
-                          <span className="truncate mr-4">{card.question}</span>
-                          <span className="text-primary truncate">{card.answer}</span>
-                        </div>
-                      ))}
-                      {generatedCards.length > 3 && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          ... és még {generatedCards.length - 3} kártya
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
 
-                {!summary && !generatedCards.length && (
+                {!summary && (
                   <div className="p-4 bg-muted/50 rounded-md text-center">
                     <p className="text-muted-foreground text-sm">
                       A feldolgozott tartalom itt fog megjelenni
@@ -419,9 +344,11 @@ export default function Upload() {
                   <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mr-2" />
                   <p className="text-sm text-yellow-800 dark:text-yellow-200">
                     Az AI funkciók működéséhez OpenAI API kulcs szükséges. 
-                    <Button variant="link" className="p-0 h-auto text-yellow-800 dark:text-yellow-200 underline ml-1">
-                      Állítsd be a beállításokban.
-                    </Button>
+                    <Link href="/settings">
+                      <Button variant="link" className="p-0 h-auto text-yellow-800 dark:text-yellow-200 underline ml-1">
+                        Állítsd be a beállításokban.
+                      </Button>
+                    </Link>
                   </p>
                 </div>
               </CardContent>
