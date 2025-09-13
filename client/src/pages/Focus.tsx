@@ -17,12 +17,19 @@ import { api } from '@/services/api';
 import useStore from '@/store/useStore';
 import { focusDetector, FocusEvent } from '@/utils/focus-detector';
 import { calculateXP } from '@/utils/spaced-repetition';
-import { Play, Pause, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Play, Pause, RotateCcw, AlertTriangle, Clock } from 'lucide-react';
 
-const FOCUS_DURATION = 25 * 60; // 25 minutes in seconds
+// Preset durations in minutes
+const PRESET_DURATIONS = [5, 15, 25, 45, 60];
 
 export default function Focus() {
-  const [timeLeft, setTimeLeft] = useState(FOCUS_DURATION);
+  const [selectedDurationMinutes, setSelectedDurationMinutes] = useState(25);
+  const [customDurationInput, setCustomDurationInput] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  
+  // Calculate focus duration in seconds based on selected duration
+  const focusDuration = selectedDurationMinutes * 60;
+  const [timeLeft, setTimeLeft] = useState(focusDuration);
   const [isRunning, setIsRunning] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [focusInterruptions, setFocusInterruptions] = useState(0);
@@ -43,9 +50,9 @@ export default function Focus() {
     }
   });
 
-  // Update user XP mutation
-  const updateUserMutation = useMutation({
-    mutationFn: (data: any) => api.updateUser(data),
+  // Add XP mutation (atomic)
+  const addXpMutation = useMutation({
+    mutationFn: (xpDelta: number) => api.addXp(xpDelta),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
     }
@@ -134,7 +141,7 @@ export default function Focus() {
   };
 
   const handleSessionEnd = async () => {
-    const focusMinutes = Math.floor((FOCUS_DURATION - timeLeft) / 60);
+    const focusMinutes = Math.floor((focusDuration - timeLeft) / 60);
     const wasInterrupted = focusInterruptions > 0;
     const correctCards = parseInt(modalCardCount) || 0;
     const xp = calculateXP(focusMinutes, correctCards, wasInterrupted);
@@ -149,10 +156,8 @@ export default function Focus() {
       focusInterrupted: wasInterrupted,
     });
 
-    // Update user XP (simplified - in real app would fetch current XP first)
-    await updateUserMutation.mutateAsync({
-      xp: 1432 + xp, // Demo XP + earned XP
-    });
+    // Add XP atomically (no hardcoded values)
+    await addXpMutation.mutateAsync(xp);
 
     toast({
       title: "Fókusz munkamenet befejezve!",
@@ -196,7 +201,7 @@ export default function Focus() {
 
   const resetTimer = () => {
     setIsRunning(false);
-    setTimeLeft(FOCUS_DURATION);
+    setTimeLeft(focusDuration);
     setIsComplete(false);
     setFocusInterruptions(0);
     setShowCheatWarning(false);
@@ -210,18 +215,51 @@ export default function Focus() {
     }
   };
 
+  // Update timer when duration changes
+  useEffect(() => {
+    if (!isRunning && !isComplete) {
+      setTimeLeft(focusDuration);
+    }
+  }, [focusDuration, isRunning, isComplete]);
+
+  const handlePresetSelect = (minutes: number) => {
+    if (isRunning) return; // Don't change duration while running
+    setSelectedDurationMinutes(minutes);
+    setShowCustomInput(false);
+    setCustomDurationInput('');
+  };
+
+  const handleCustomDuration = () => {
+    const customMinutes = parseInt(customDurationInput);
+    if (customMinutes && customMinutes >= 1 && customMinutes <= 120) {
+      setSelectedDurationMinutes(customMinutes);
+      setShowCustomInput(false);
+      setCustomDurationInput('');
+    }
+  };
+
+  const handleCustomInputKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleCustomDuration();
+    }
+    if (e.key === 'Escape') {
+      setShowCustomInput(false);
+      setCustomDurationInput('');
+    }
+  };
+
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const progressPercentage = ((FOCUS_DURATION - timeLeft) / FOCUS_DURATION) * 100;
+  const progressPercentage = ((focusDuration - timeLeft) / focusDuration) * 100;
   const circumference = 2 * Math.PI * 112;
   const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
 
   const expectedXP = calculateXP(
-    Math.floor((FOCUS_DURATION - timeLeft) / 60), 
+    Math.floor((focusDuration - timeLeft) / 60), 
     0, // Cards will be entered at end
     focusInterruptions > 0
   );
@@ -230,7 +268,102 @@ export default function Focus() {
     <div>
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-foreground mb-2">Fókusz mód</h1>
-        <p className="text-muted-foreground">25 perces Pomodoro timer XP szerzéssel</p>
+        <p className="text-muted-foreground">Állítható Pomodoro timer XP szerzéssel</p>
+      </div>
+
+      {/* Duration Selector */}
+      <div className="max-w-2xl mx-auto mb-8">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-semibold text-card-foreground mb-2 flex items-center justify-center">
+                <Clock className="w-5 h-5 mr-2" />
+                Munkamenet hossza
+              </h3>
+              <p className="text-sm text-muted-foreground">Válassz előre beállított időt vagy adj meg saját értéket (1-120 perc)</p>
+            </div>
+            
+            {/* Preset Buttons */}
+            <div className="flex flex-wrap justify-center gap-2 mb-4">
+              {PRESET_DURATIONS.map((minutes) => (
+                <Button
+                  key={minutes}
+                  variant={selectedDurationMinutes === minutes ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handlePresetSelect(minutes)}
+                  disabled={isRunning}
+                  className="min-w-16"
+                  data-testid={`preset-${minutes}`}
+                >
+                  {minutes}p
+                </Button>
+              ))}
+              <Button
+                variant={showCustomInput ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  if (!isRunning) {
+                    setShowCustomInput(!showCustomInput);
+                    if (!showCustomInput) {
+                      setCustomDurationInput(selectedDurationMinutes.toString());
+                    }
+                  }
+                }}
+                disabled={isRunning}
+                data-testid="button-custom"
+              >
+                Egyéni
+              </Button>
+            </div>
+
+            {/* Custom Input */}
+            {showCustomInput && (
+              <div className="flex items-center justify-center gap-2">
+                <Input
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={customDurationInput}
+                  onChange={(e) => setCustomDurationInput(e.target.value)}
+                  onKeyDown={handleCustomInputKeyPress}
+                  placeholder="1-120 perc"
+                  className="w-24 text-center"
+                  data-testid="input-custom-duration"
+                  autoFocus
+                />
+                <Button
+                  size="sm"
+                  onClick={handleCustomDuration}
+                  disabled={!customDurationInput || parseInt(customDurationInput) < 1 || parseInt(customDurationInput) > 120}
+                  data-testid="button-apply-custom"
+                >
+                  Alkalmaz
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setShowCustomInput(false);
+                    setCustomDurationInput('');
+                  }}
+                  data-testid="button-cancel-custom"
+                >
+                  Mégse
+                </Button>
+              </div>
+            )}
+            
+            {/* Selected Duration Display */}
+            <div className="text-center mt-4">
+              <div className="text-2xl font-bold text-primary" data-testid="selected-duration">
+                {selectedDurationMinutes} perc
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {isRunning ? 'Munkamenet fut...' : 'Kész az indításra'}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="max-w-md mx-auto text-center">
@@ -286,7 +419,7 @@ export default function Focus() {
             ) : (
               <>
                 <Play className="w-5 h-5 mr-2" />
-                {timeLeft === FOCUS_DURATION ? 'Indítás' : 'Folytatás'}
+                {timeLeft === focusDuration ? 'Indítás' : 'Folytatás'}
               </>
             )}
           </Button>

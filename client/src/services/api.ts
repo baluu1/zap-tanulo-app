@@ -136,4 +136,10 @@ export const api = {
     const response = await apiRequest('PATCH', '/api/user', data);
     return response.json();
   },
+
+  // Add XP atomically (fixes hardcoded XP issues)
+  async addXp(xpDelta: number) {
+    const response = await apiRequest('POST', '/api/user/add-xp', { xpDelta });
+    return response.json();
+  },
 };

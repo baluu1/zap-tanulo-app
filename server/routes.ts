@@ -3,6 +3,12 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { openaiService } from "./services/openai";
 import { insertMaterialSchema, insertDeckSchema, insertFlashcardSchema, insertStudySessionSchema, insertSettingsSchema } from "@shared/schema";
+import { z } from "zod";
+
+// Schema for XP addition
+const addXpSchema = z.object({
+  xpDelta: z.number().min(0).max(10000) // Reasonable XP limits
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -389,6 +395,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedUser);
     } catch (error) {
       res.status(500).json({ error: "Failed to update user" });
+    }
+  });
+
+  // Add XP endpoint (POST /api/user/add-xp) - for atomic XP increments
+  app.post("/api/user/add-xp", async (req, res) => {
+    try {
+      const user = await storage.getUserByEmail('demo@example.com');
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const validatedData = addXpSchema.parse(req.body);
+      const { xpDelta } = validatedData;
+      
+      // Atomic XP increment
+      const newXp = user.xp + xpDelta;
+      const updatedUser = await storage.updateUser(user.id, { xp: newXp });
+      
+      console.log(`XP added: ${user.xp} + ${xpDelta} = ${newXp}`);
+      
+      res.json({ 
+        success: true, 
+        user: updatedUser, 
+        xpAdded: xpDelta,
+        previousXp: user.xp,
+        newXp: newXp
+      });
+    } catch (error) {
+      console.error("Error adding XP:", error);
+      res.status(500).json({ error: "Failed to add XP" });
     }
   });
 
