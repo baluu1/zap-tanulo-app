@@ -317,14 +317,16 @@ export default function Cards() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 pt-2">
-                      <Button 
-                        size="sm" 
-                        className="flex-1"
-                        data-testid={`button-study-deck-${deck.id}`}
-                      >
-                        <Clock className="h-4 w-4 mr-1" />
-                        Tanulás
-                      </Button>
+                      <Link href={`/study/${deck.id}`} className="flex-1">
+                        <Button 
+                          size="sm" 
+                          className="w-full"
+                          data-testid={`button-study-deck-${deck.id}`}
+                        >
+                          <Clock className="h-4 w-4 mr-1" />
+                          Tanulás
+                        </Button>
+                      </Link>
                       <Link href={`/cards/${deck.id}`}>
                         <Button 
                           size="sm" 

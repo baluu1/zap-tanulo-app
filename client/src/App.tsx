@@ -10,6 +10,7 @@ import Functions from "@/pages/Functions";
 import Upload from "@/pages/Upload";
 import Cards from "@/pages/Cards";
 import DeckManager from "@/pages/DeckManager";
+import StudyMode from "@/pages/StudyMode";
 import Chat from "@/pages/Chat";
 import Focus from "@/pages/Focus";
 import Progress from "@/pages/Progress";
@@ -25,6 +26,7 @@ function Router() {
         <Route path="/upload" component={Upload} />
         <Route path="/cards" component={Cards} />
         <Route path="/cards/:deckId" component={DeckManager} />
+        <Route path="/study/:deckId" component={StudyMode} />
         <Route path="/chat" component={Chat} />
         <Route path="/focus" component={Focus} />
         <Route path="/progress" component={Progress} />
