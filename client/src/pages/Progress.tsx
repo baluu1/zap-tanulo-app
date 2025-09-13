@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { api } from '@/services/api';
 import { getAnimalForXP } from '@/utils/spaced-repetition';
+import type { StudySession, Material, Flashcard } from '@shared/schema';
 import { 
   Trophy, 
   Layers, 
@@ -17,22 +18,22 @@ export default function ProgressPage() {
   // Query for user data
   const { data: user, isLoading: userLoading } = useQuery({
     queryKey: ['/api/user'],
-  });
+  }) as { data: { xp: number } | undefined; isLoading: boolean };
 
   // Query for study sessions
   const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
     queryKey: ['/api/study-sessions'],
-  });
+  }) as { data: StudySession[]; isLoading: boolean };
 
   // Query for materials
   const { data: materials = [] } = useQuery({
     queryKey: ['/api/materials'],
-  });
+  }) as { data: Material[] };
 
   // Query for flashcards
   const { data: flashcards = [] } = useQuery({
     queryKey: ['/api/flashcards'],
-  });
+  }) as { data: Flashcard[] };
 
   if (userLoading || sessionsLoading) {
     return (
@@ -45,43 +46,130 @@ export default function ProgressPage() {
     );
   }
 
-  const currentAnimal = user ? getAnimalForXP(user.xp || 0) : { level: 1, name: "Kezdő Nyúl", minXP: 0, nextXP: 100 };
-  const xpProgress = user && currentAnimal.nextXP 
-    ? ((user.xp - currentAnimal.minXP) / (currentAnimal.nextXP - currentAnimal.minXP)) * 100
+  // Calculate total XP from local session data first
+  const localTotalXP = sessions.reduce((sum: number, session: StudySession) => sum + (session.xpEarned || 0), 0);
+  const displayXP = localTotalXP > 0 ? localTotalXP : (user?.xp || 0);
+
+  const currentAnimal = getAnimalForXP(displayXP);
+  const xpProgress = currentAnimal.nextXP 
+    ? ((displayXP - currentAnimal.minXP) / (currentAnimal.nextXP - currentAnimal.minXP)) * 100
     : 0;
 
-  // Calculate weekly stats from sessions
+  // Calculate weekly stats from sessions (last 7 days)
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - 6);
+  weekStart.setHours(0, 0, 0, 0);
+  
+  const weeklySessionsOnly = sessions.filter((session: StudySession) => {
+    if (!session.createdAt) return false;
+    const sessionDate = new Date(session.createdAt);
+    return sessionDate >= weekStart;
+  });
+  
   const weeklyStats = {
-    totalMinutes: sessions.reduce((sum: number, session: any) => sum + (session.duration || 0), 0),
-    cardsStudied: sessions.reduce((sum: number, session: any) => sum + (session.cardsStudied || 0), 0),
-    focusSessions: sessions.filter((s: any) => s.type === 'focus').length,
-    totalXP: sessions.reduce((sum: number, session: any) => sum + (session.xpEarned || 0), 0),
+    totalMinutes: weeklySessionsOnly.reduce((sum: number, session: StudySession) => sum + (session.duration || 0), 0),
+    cardsStudied: weeklySessionsOnly.reduce((sum: number, session: StudySession) => sum + (session.cardsStudied || 0), 0),
+    focusSessions: weeklySessionsOnly.filter((s: StudySession) => s.type === 'focus').length,
+    totalXP: weeklySessionsOnly.reduce((sum: number, session: StudySession) => sum + (session.xpEarned || 0), 0),
   };
 
-  // Mock daily activity data (in real app would come from sessions grouped by day)
-  const dailyActivity = [
-    { day: 'H', minutes: 45, label: 'Hétfő' },
-    { day: 'K', minutes: 32, label: 'Kedd' },
-    { day: 'Sz', minutes: 18, label: 'Szerda' },
-    { day: 'Cs', minutes: 67, label: 'Csütörtök' },
-    { day: 'P', minutes: 28, label: 'Péntek' },
-    { day: 'Sz', minutes: 22, label: 'Szombat' },
-    { day: 'V', minutes: 89, label: 'Vasárnap' },
-  ];
+  // Calculate real daily activity from sessions (last 7 days)
+  const today = new Date();
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (6 - i));
+    return date;
+  });
+  
+  const dayLabels = ['H', 'K', 'Sz', 'Cs', 'P', 'Szo', 'V'];
+  const dayNames = ['Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat', 'Vasárnap'];
+  
+  const dailyActivity = last7Days.map((date, index) => {
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+    
+    const dayMinutes = sessions
+      .filter((session: StudySession) => {
+        if (!session.createdAt) return false;
+        const sessionDate = new Date(session.createdAt);
+        return sessionDate >= dayStart && sessionDate <= dayEnd;
+      })
+      .reduce((sum: number, session: StudySession) => sum + (session.duration || 0), 0);
+    
+    return {
+      day: dayLabels[date.getDay() === 0 ? 6 : date.getDay() - 1], // Convert Sunday=0 to our format
+      minutes: dayMinutes,
+      label: dayNames[date.getDay() === 0 ? 6 : date.getDay() - 1]
+    };
+  });
 
-  const maxMinutes = Math.max(...dailyActivity.map(d => d.minutes));
+  const maxMinutes = Math.max(1, ...dailyActivity.map(d => d.minutes)); // Guard against division by zero
 
-  // Mock achievements
+  // Calculate real achievements from actual user data
+  const totalCardsStudied = sessions.reduce((sum: number, session: StudySession) => 
+    sum + (session.cardsStudied || 0), 0);
+  
+  const focusSessionCount = sessions.filter((s: StudySession) => s.type === 'focus').length;
+  
+  const studyStreak = (() => {
+    // Calculate consecutive days with study activity
+    let streak = 0;
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    
+    for (let i = 0; i < 30; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(today.getDate() - i);
+      checkDate.setHours(0, 0, 0, 0);
+      
+      const nextDay = new Date(checkDate);
+      nextDay.setHours(23, 59, 59, 999);
+      
+      const hasActivity = sessions.some((session: StudySession) => {
+        if (!session.createdAt) return false;
+        const sessionDate = new Date(session.createdAt);
+        return sessionDate >= checkDate && sessionDate <= nextDay;
+      });
+      
+      if (hasActivity) {
+        streak++;
+      } else if (i > 0) {
+        break; // Stop counting if we hit a day without activity (but allow today to be empty)
+      }
+    }
+    return streak;
+  })();
+  
   const achievements = [
-    { icon: Trophy, name: 'Első hét', description: '7 napon át tanultál', earned: true, color: 'text-yellow-600 dark:text-yellow-400' },
-    { icon: Layers, name: 'Kártya mester', description: '100 kártyát tanultál', earned: flashcards.length >= 6, color: 'text-blue-600 dark:text-blue-400' },
-    { icon: Clock, name: 'Fókusz bajnok', description: '50 fókusz munkamenet', earned: false, color: 'text-gray-400' },
+    {
+      icon: Trophy,
+      name: 'Első hét',
+      description: '7 napon át tanultál',
+      earned: studyStreak >= 7,
+      color: studyStreak >= 7 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-400'
+    },
+    {
+      icon: Layers,
+      name: 'Kártya mester',
+      description: '100 kártyát tanultál',
+      earned: totalCardsStudied >= 100,
+      color: totalCardsStudied >= 100 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'
+    },
+    {
+      icon: Clock,
+      name: 'Fókusz bajnok',
+      description: '50 fókusz munkamenet',
+      earned: focusSessionCount >= 50,
+      color: focusSessionCount >= 50 ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400'
+    },
   ];
 
   // Calculate material mastery
-  const materialStats = materials.map((material: any) => {
-    const materialCards = flashcards.filter((card: any) => card.materialId === material.id);
-    const masteredCards = materialCards.filter((card: any) => card.correctCount > card.incorrectCount);
+  const materialStats = materials.map((material: Material) => {
+    const materialCards = flashcards.filter((card: Flashcard) => card.materialId === material.id);
+    const masteredCards = materialCards.filter((card: Flashcard) => (card.correctCount || 0) > (card.incorrectCount || 0));
     const masteryPercentage = materialCards.length > 0 ? Math.round((masteredCards.length / materialCards.length) * 100) : 0;
     
     return {
@@ -107,7 +195,7 @@ export default function ProgressPage() {
               <h3 className="text-lg font-semibold text-card-foreground mb-4">Napi aktivitás</h3>
               <div className="grid grid-cols-7 gap-2 mb-4">
                 {dailyActivity.map((day, index) => (
-                  <div key={index} className="text-center" data-testid={`activity-${day.day}`}>
+                  <div key={index} className="text-center" data-testid={`activity-${day.day}-${index}`}>
                     <div className="text-xs text-muted-foreground mb-1">{day.day}</div>
                     <div className="bg-primary/20 rounded h-8 flex items-end justify-center">
                       <div 
@@ -141,7 +229,7 @@ export default function ProgressPage() {
                   <div className="text-sm text-muted-foreground">Fókusz munkamenet</div>
                 </div>
                 <div className="text-center" data-testid="stat-xp">
-                  <div className="text-2xl font-bold text-primary">{user?.xp || 0}</div>
+                  <div className="text-2xl font-bold text-primary">{displayXP}</div>
                   <div className="text-sm text-muted-foreground">Összes XP</div>
                 </div>
               </div>
@@ -153,7 +241,7 @@ export default function ProgressPage() {
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold text-card-foreground mb-4">Legutóbbi aktivitás</h3>
               <div className="space-y-3" data-testid="recent-activities">
-                {sessions.slice(0, 5).map((session: any, index: number) => (
+                {sessions.slice(0, 5).map((session: StudySession, index: number) => (
                   <div key={index} className="flex items-center space-x-3">
                     <div className="bg-primary/10 p-2 rounded-full">
                       {session.type === 'cards' && <Layers className="w-4 h-4 text-primary" />}
@@ -167,7 +255,7 @@ export default function ProgressPage() {
                         {session.type === 'chat' && 'AI chat munkamenet'}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(session.createdAt).toLocaleDateString('hu-HU')}
+                        {session.createdAt ? new Date(session.createdAt).toLocaleDateString('hu-HU') : 'N/A'}
                       </p>
                     </div>
                     <div className="text-sm font-semibold text-primary">+{session.xpEarned || 0} XP</div>
@@ -209,12 +297,12 @@ export default function ProgressPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">XP</span>
                   <span className="text-card-foreground" data-testid="xp-progress">
-                    {user?.xp || 0}/{currentAnimal.nextXP || 100}
+                    {displayXP}/{currentAnimal.nextXP || 100}
                   </span>
                 </div>
                 <Progress value={xpProgress} className="h-3" />
                 <p className="text-xs text-muted-foreground">
-                  {currentAnimal.nextXP ? (currentAnimal.nextXP - (user?.xp || 0)) : 0} XP a következő szintig
+                  {currentAnimal.nextXP ? Math.max(0, currentAnimal.nextXP - displayXP) : 0} XP a következő szintig
                 </p>
               </div>
             </CardContent>
@@ -252,7 +340,7 @@ export default function ProgressPage() {
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold text-card-foreground mb-4">Tananyagok</h3>
               <div className="space-y-3" data-testid="study-materials">
-                {materialStats.map((material: any, index: number) => (
+                {materialStats.map((material: Material & { cardCount: number; masteryPercentage: number }, index: number) => (
                   <div key={index} className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="bg-primary/10 p-2 rounded">
