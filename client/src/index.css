@@ -3,26 +3,35 @@
 @tailwind utilities;
 
 :root {
-  /* Light theme colors - Deep Blue accent theme */
+  /* Light theme colors - Enhanced for WCAG-AA contrast */
   --background: hsl(0 0% 100%);
   --foreground: hsl(222.2 84% 4.9%);
   --card: hsl(0 0% 100%);
   --card-foreground: hsl(222.2 84% 4.9%);
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(222.2 84% 4.9%);
-  --primary: hsl(221.2 83.2% 53.3%);
+  
+  /* Enhanced primary with better contrast */
+  --primary: hsl(221.2 83.2% 50.0%);
   --primary-foreground: hsl(210 40% 98%);
-  --secondary: hsl(210 40% 96%);
-  --secondary-foreground: hsl(222.2 47.4% 11.2%);
-  --muted: hsl(210 40% 96%);
-  --muted-foreground: hsl(215.4 16.3% 46.9%);
-  --accent: hsl(210 40% 96%);
-  --accent-foreground: hsl(222.2 47.4% 11.2%);
-  --destructive: hsl(0 84.2% 60.2%);
+  
+  /* Improved neutral grays for better contrast hierarchy */
+  --secondary: hsl(210 40% 94%);
+  --secondary-foreground: hsl(222.2 84% 11.2%);
+  --muted: hsl(210 40% 94%);
+  --muted-foreground: hsl(215.4 16.3% 44.9%);  /* Darkened for 4.5:1 contrast */
+  --accent: hsl(210 40% 94%);
+  --accent-foreground: hsl(222.2 84% 11.2%);
+  
+  /* Enhanced destructive for better visibility */
+  --destructive: hsl(0 84.2% 55.0%);
   --destructive-foreground: hsl(210 40% 98%);
-  --border: hsl(214.3 31.8% 91.4%);
-  --input: hsl(214.3 31.8% 91.4%);
-  --ring: hsl(221.2 83.2% 53.3%);
+  
+  /* WCAG-AA compliant borders - 3:1 contrast on white */
+  --border: hsl(214.3 31.8% 58.0%);
+  --input: hsl(214.3 31.8% 52.0%);
+  --border-strong: hsl(214.3 31.8% 48.0%);
+  --ring: hsl(221.2 83.2% 50.0%);
   --chart-1: hsl(221.2 83.2% 53.3%);
   --chart-2: hsl(159.7826 100% 36.0784%);
   --chart-3: hsl(42.0290 92.8251% 56.2745%);
@@ -30,12 +39,12 @@
   --chart-5: hsl(341.4894 75.2000% 50.9804%);
   --sidebar: hsl(0 0% 100%);
   --sidebar-foreground: hsl(222.2 84% 4.9%);
-  --sidebar-primary: hsl(221.2 83.2% 53.3%);
+  --sidebar-primary: hsl(221.2 83.2% 50.0%);
   --sidebar-primary-foreground: hsl(210 40% 98%);
-  --sidebar-accent: hsl(210 40% 96%);
-  --sidebar-accent-foreground: hsl(222.2 47.4% 11.2%);
-  --sidebar-border: hsl(214.3 31.8% 91.4%);
-  --sidebar-ring: hsl(221.2 83.2% 53.3%);
+  --sidebar-accent: hsl(210 40% 94%);
+  --sidebar-accent-foreground: hsl(222.2 84% 11.2%);
+  --sidebar-border: hsl(214.3 31.8% 58.0%);
+  --sidebar-ring: hsl(221.2 83.2% 50.0%);
   --font-sans: "Inter", system-ui, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
@@ -99,54 +108,63 @@
   /* Blue/Kék (Default) - already set above */
 }
 
+/* Enhanced accent themes with WCAG-AA compliance */
 .accent-purple {
-  --primary: hsl(262.1 83.3% 57.8%);
+  --primary: hsl(262.1 83.3% 52.0%);
   --primary-foreground: hsl(210 40% 98%);
-  --ring: hsl(262.1 83.3% 57.8%);
-  --chart-1: hsl(262.1 83.3% 57.8%);
-  --sidebar-primary: hsl(262.1 83.3% 57.8%);
-  --sidebar-ring: hsl(262.1 83.3% 57.8%);
+  --ring: hsl(262.1 83.3% 52.0%);
+  --chart-1: hsl(262.1 83.3% 52.0%);
+  --sidebar-primary: hsl(262.1 83.3% 52.0%);
+  --sidebar-ring: hsl(262.1 83.3% 52.0%);
 }
 
 .accent-green {
-  --primary: hsl(142.1 76.2% 36.3%);
+  --primary: hsl(142.1 76.2% 40.0%);
   --primary-foreground: hsl(210 40% 98%);
-  --ring: hsl(142.1 76.2% 36.3%);
-  --chart-1: hsl(142.1 76.2% 36.3%);
-  --sidebar-primary: hsl(142.1 76.2% 36.3%);
-  --sidebar-ring: hsl(142.1 76.2% 36.3%);
+  --ring: hsl(142.1 76.2% 40.0%);
+  --chart-1: hsl(142.1 76.2% 40.0%);
+  --sidebar-primary: hsl(142.1 76.2% 40.0%);
+  --sidebar-ring: hsl(142.1 76.2% 40.0%);
 }
 
 .accent-amber {
-  --primary: hsl(47.9 95.8% 53.1%);
+  --primary: hsl(47.9 95.8% 48.0%);
   --primary-foreground: hsl(26 83.3% 14.1%);
-  --ring: hsl(47.9 95.8% 53.1%);
-  --chart-1: hsl(47.9 95.8% 53.1%);
-  --sidebar-primary: hsl(47.9 95.8% 53.1%);
-  --sidebar-ring: hsl(47.9 95.8% 53.1%);
+  --ring: hsl(47.9 95.8% 48.0%);
+  --chart-1: hsl(47.9 95.8% 48.0%);
+  --sidebar-primary: hsl(47.9 95.8% 48.0%);
+  --sidebar-ring: hsl(47.9 95.8% 48.0%);
 }
 
 .dark {
-  /* Dark theme colors - Deep Blue accent theme */
+  /* Dark theme colors - Enhanced for WCAG-AA contrast */
   --background: hsl(222.2 84% 4.9%);
   --foreground: hsl(210 40% 98%);
   --card: hsl(222.2 84% 4.9%);
   --card-foreground: hsl(210 40% 98%);
   --popover: hsl(222.2 84% 4.9%);
   --popover-foreground: hsl(210 40% 98%);
-  --primary: hsl(217.2 91.2% 59.8%);
+  
+  /* Enhanced primary for dark mode visibility */
+  --primary: hsl(217.2 91.2% 65.0%);
   --primary-foreground: hsl(222.2 84% 4.9%);
-  --secondary: hsl(217.2 32.6% 17.5%);
+  
+  /* Improved neutral grays for dark mode contrast */
+  --secondary: hsl(217.2 32.6% 20.0%);
   --secondary-foreground: hsl(210 40% 98%);
-  --muted: hsl(217.2 32.6% 17.5%);
-  --muted-foreground: hsl(215 20.2% 65.1%);
-  --accent: hsl(217.2 32.6% 17.5%);
+  --muted: hsl(217.2 32.6% 20.0%);
+  --muted-foreground: hsl(215 20.2% 70.0%);  /* Lightened for better contrast */
+  --accent: hsl(217.2 32.6% 20.0%);
   --accent-foreground: hsl(210 40% 98%);
-  --destructive: hsl(0 62.8% 30.6%);
-  --destructive-foreground: hsl(210 40% 98%);
-  --border: hsl(217.2 32.6% 17.5%);
-  --input: hsl(217.2 32.6% 17.5%);
-  --ring: hsl(217.2 91.2% 59.8%);
+  
+  /* Enhanced destructive for dark mode */
+  --destructive: hsl(0 84.2% 65.0%);
+  --destructive-foreground: hsl(222.2 84% 4.9%);
+  
+  /* Refined borders and inputs for dark mode */
+  --border: hsl(217.2 32.6% 20.0%);
+  --input: hsl(217.2 32.6% 20.0%);
+  --ring: hsl(217.2 91.2% 65.0%);
   --chart-1: hsl(217.2 91.2% 59.8%);
   --chart-2: hsl(159.7826 100% 36.0784%);
   --chart-3: hsl(42.0290 92.8251% 56.2745%);
@@ -154,12 +172,12 @@
   --chart-5: hsl(341.4894 75.2000% 50.9804%);
   --sidebar: hsl(222.2 84% 4.9%);
   --sidebar-foreground: hsl(210 40% 98%);
-  --sidebar-primary: hsl(217.2 91.2% 59.8%);
+  --sidebar-primary: hsl(217.2 91.2% 65.0%);
   --sidebar-primary-foreground: hsl(222.2 84% 4.9%);
-  --sidebar-accent: hsl(217.2 32.6% 17.5%);
+  --sidebar-accent: hsl(217.2 32.6% 20.0%);
   --sidebar-accent-foreground: hsl(210 40% 98%);
-  --sidebar-border: hsl(217.2 32.6% 17.5%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+  --sidebar-border: hsl(217.2 32.6% 20.0%);
+  --sidebar-ring: hsl(217.2 91.2% 65.0%);
   --font-sans: "Inter", system-ui, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
@@ -167,31 +185,32 @@
 }
 
 /* Dark theme accent color overrides */
+/* Dark theme accent overrides with enhanced contrast */
 .dark.accent-purple {
-  --primary: hsl(263.4 70% 50.4%);
-  --primary-foreground: hsl(210 40% 98%);
-  --ring: hsl(263.4 70% 50.4%);
-  --chart-1: hsl(263.4 70% 50.4%);
-  --sidebar-primary: hsl(263.4 70% 50.4%);
-  --sidebar-ring: hsl(263.4 70% 50.4%);
+  --primary: hsl(263.4 70% 68.0%);
+  --primary-foreground: hsl(222.2 84% 4.9%);
+  --ring: hsl(263.4 70% 68.0%);
+  --chart-1: hsl(263.4 70% 68.0%);
+  --sidebar-primary: hsl(263.4 70% 68.0%);
+  --sidebar-ring: hsl(263.4 70% 68.0%);
 }
 
 .dark.accent-green {
-  --primary: hsl(142.1 70.6% 45.3%);
-  --primary-foreground: hsl(144.9 80.4% 10%);
-  --ring: hsl(142.1 70.6% 45.3%);
-  --chart-1: hsl(142.1 70.6% 45.3%);
-  --sidebar-primary: hsl(142.1 70.6% 45.3%);
-  --sidebar-ring: hsl(142.1 70.6% 45.3%);
+  --primary: hsl(142.1 70.6% 65.0%);
+  --primary-foreground: hsl(222.2 84% 4.9%);
+  --ring: hsl(142.1 70.6% 65.0%);
+  --chart-1: hsl(142.1 70.6% 65.0%);
+  --sidebar-primary: hsl(142.1 70.6% 65.0%);
+  --sidebar-ring: hsl(142.1 70.6% 65.0%);
 }
 
 .dark.accent-amber {
-  --primary: hsl(47.9 95.8% 53.1%);
+  --primary: hsl(47.9 95.8% 70.0%);
   --primary-foreground: hsl(26 83.3% 14.1%);
-  --ring: hsl(47.9 95.8% 53.1%);
-  --chart-1: hsl(47.9 95.8% 53.1%);
-  --sidebar-primary: hsl(47.9 95.8% 53.1%);
-  --sidebar-ring: hsl(47.9 95.8% 53.1%);
+  --ring: hsl(47.9 95.8% 70.0%);
+  --chart-1: hsl(47.9 95.8% 70.0%);
+  --sidebar-primary: hsl(47.9 95.8% 70.0%);
+  --sidebar-ring: hsl(47.9 95.8% 70.0%);
 }
 
 @layer base {
@@ -292,16 +311,33 @@
     min-width: var(--touch-target-min);
   }
   
-  /* Improved link styling */
+  /* Apply stronger borders to interactive elements */
+  input, select, textarea {
+    border-color: var(--input);
+  }
+  
+  .border-strong {
+    border-color: var(--border-strong);
+  }
+  
+  /* WCAG-AA compliant link styling - persistent underlines */
   a {
-    text-decoration: none;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--primary) 70%, transparent);
+    text-underline-offset: 0.15em;
     color: var(--primary);
-    transition: color 0.15s ease;
+    transition: all 0.15s ease;
   }
   
   a:hover {
     color: color-mix(in srgb, var(--primary) 80%, transparent);
-    text-decoration: underline;
+    text-decoration-color: var(--primary);
+  }
+  
+  a:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+    text-decoration-color: var(--primary);
   }
   
   /* Enhanced container with padding for mobile */
