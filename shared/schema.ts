@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import { pgTable, text, varchar, jsonb, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -116,3 +117,57 @@ export type StudySession = typeof studySessions.$inferSelect;
 export type InsertStudySession = z.infer<typeof insertStudySessionSchema>;
 export type Settings = typeof settings.$inferSelect;
 export type InsertSettings = z.infer<typeof insertSettingsSchema>;
+
+// Relations
+export const usersRelations = relations(users, ({ many, one }) => ({
+  materials: many(materials),
+  decks: many(decks),
+  flashcards: many(flashcards),
+  studySessions: many(studySessions),
+  settings: one(settings),
+}));
+
+export const materialsRelations = relations(materials, ({ one, many }) => ({
+  user: one(users, {
+    fields: [materials.userId],
+    references: [users.id],
+  }),
+  flashcards: many(flashcards),
+}));
+
+export const decksRelations = relations(decks, ({ one, many }) => ({
+  user: one(users, {
+    fields: [decks.userId],
+    references: [users.id],
+  }),
+  flashcards: many(flashcards),
+}));
+
+export const flashcardsRelations = relations(flashcards, ({ one }) => ({
+  user: one(users, {
+    fields: [flashcards.userId],
+    references: [users.id],
+  }),
+  deck: one(decks, {
+    fields: [flashcards.deckId],
+    references: [decks.id],
+  }),
+  material: one(materials, {
+    fields: [flashcards.materialId],
+    references: [materials.id],
+  }),
+}));
+
+export const studySessionsRelations = relations(studySessions, ({ one }) => ({
+  user: one(users, {
+    fields: [studySessions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const settingsRelations = relations(settings, ({ one }) => ({
+  user: one(users, {
+    fields: [settings.userId],
+    references: [users.id],
+  }),
+}));

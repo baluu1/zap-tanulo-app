@@ -1,4 +1,7 @@
 import { type User, type InsertUser, type Material, type InsertMaterial, type Deck, type InsertDeck, type Flashcard, type InsertFlashcard, type StudySession, type InsertStudySession, type Settings, type InsertSettings } from "@shared/schema";
+import { users, materials, decks, flashcards, studySessions, settings } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -312,4 +315,108 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+import { DatabaseStorage } from './database-storage';
+
+export const storage = new DatabaseStorage();
+
+// Seed database with demo data if needed
+export async function seedDatabase() {
+  try {
+    // Check if demo user already exists
+    const demoUser = await storage.getUserByEmail('demo@example.com');
+    if (demoUser) {
+      console.log('Demo data already exists');
+      return;
+    }
+
+    console.log('Seeding database with demo data...');
+    
+    // Create demo user
+    const user = await storage.createUser({
+      username: 'demo',
+      email: 'demo@example.com',
+      password: 'demo',
+      xp: 1432,
+      level: 5,
+      currentAnimal: 'Delfin',
+    });
+
+    // Create demo material
+    const material = await storage.createMaterial({
+      userId: user.id,
+      title: 'Magyar történelem',
+      content: 'Az Árpád-házi királyok időszaka (896-1301) Magyarország történelmének alapító korszaka volt. István I., az első magyar király 1000-ben vagy 1001-ben koronáztatta meg magát. A kereszténység felvétele és az európai államközösséghez való csatlakozás megalapozta a magyar államiságot.',
+      summary: 'Az Árpád-ház Magyarország első királyi dinasztiája volt, amely megalapozta a keresztény magyar államot.',
+      type: 'text',
+    });
+
+    // Create demo deck
+    const deck = await storage.createDeck({
+      userId: user.id,
+      name: 'Magyar történelem',
+      description: 'Árpád-házi királyok és a korai magyar államiság',
+    });
+
+    // Create demo flashcards
+    const flashcardData = [
+      { question: 'Mikor kezdődött az Árpád-ház uralma Magyarországon?', answer: '896-ban, amikor Árpád vezér és a magyarok betelepedtek a Kárpát-medencébe.' },
+      { question: 'Ki volt az első magyar király?', answer: 'István I., akit 1000. december 25-én vagy 1001. január 1-jén koronáztak meg.' },
+      { question: 'Mikor ért véget az Árpád-ház uralma?', answer: '1301-ben III. András halálával.' },
+      { question: 'Mi volt István király legnagyobb eredménye?', answer: 'A kereszténység felvétele és a magyar államiság megalapozása.' },
+      { question: 'Hogyan csatlakozott Magyarország Európához?', answer: 'A kereszténység felvételével és az európai államközösséghez való csatlakozással.' },
+    ];
+
+    for (const cardData of flashcardData) {
+      await storage.createFlashcard({
+        userId: user.id,
+        deckId: deck.id,
+        materialId: material.id,
+        question: cardData.question,
+        answer: cardData.answer,
+        difficulty: 1,
+        nextReview: new Date(),
+      });
+    }
+
+    // Create demo settings
+    await storage.createOrUpdateSettings({
+      userId: user.id,
+      openaiApiKey: null,
+      theme: 'light',
+      accentColor: 'blue',
+      focusAlerts: true,
+      dailyReminders: false,
+      cardDifficulty: 'medium',
+    });
+
+    // Create some demo study sessions
+    const sessions = [
+      {
+        userId: user.id,
+        type: 'cards' as const,
+        duration: 15,
+        xpEarned: 45,
+        cardsStudied: 5,
+        correctCards: 4,
+        focusInterrupted: false,
+      },
+      {
+        userId: user.id,
+        type: 'focus' as const,
+        duration: 25,
+        xpEarned: 50,
+        cardsStudied: 0,
+        correctCards: 0,
+        focusInterrupted: false,
+      },
+    ];
+
+    for (const sessionData of sessions) {
+      await storage.createStudySession(sessionData);
+    }
+
+    console.log('Database seeded successfully!');
+  } catch (error) {
+    console.error('Error seeding database:', error);
+  }
+}

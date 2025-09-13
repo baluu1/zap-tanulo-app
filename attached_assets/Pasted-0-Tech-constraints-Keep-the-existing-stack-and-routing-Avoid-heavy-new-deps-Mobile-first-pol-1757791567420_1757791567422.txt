@@ -1,0 +1,84 @@
+0) Tech & constraints
+	•	Keep the existing stack and routing. Avoid heavy new deps. Mobile-first polish.
+	•	Persist user settings in localStorage (theme, accent color, reminders).
+	•	Use CSS variables for theming; no inline colors.
+
+1) Theming & design polish
+	•	Fix Accent color: the color picker must actually apply app-wide (buttons, links, progress bars, toggles) and persist across reloads via localStorage.
+	•	Provide a small curated palette in settings (Deep Blue – default, Emerald, Purple, Sunset) + “System”.
+	•	Dark/Light toggle: ensure it switches instantly and persists.
+	•	Add subtle, student-friendly visuals: small animal badges/emojis where relevant (Progress page, level cards). No huge images, keep it clean.
+
+2) Navigation & copy
+	•	Top nav items (Funkciók, Haladás, Feltöltés, Regisztráció/Belépés) must all work. Keep “ZAP” logo → home.
+	•	Hungarian microcopy pass: short helper texts under actions (buttons, empty states).
+
+3) Kártyák – manual creation & study flow (AI nélkül is)
+	•	On Kártyák page:
+	•	If there are no decks, show a clear CTA: „Új pakli létrehozása”.
+	•	In a deck view, show simple inline card editor:
+	•	Fields: Kérdés and Válasz, big „+ Kártya hozzáadása” gomb.
+	•	Gyors bevitel textarea: each line in the form Kérdés — Válasz (em dash or hyphen). Parse into multiple cards.
+	•	Cards list with edit/delete.
+	•	Tanulás mód a decken belül:
+	•	Large card, underneath two big buttons: „Nem tudom” (piros), „Tudom” (zöld).
+	•	Swipe: balra = nem tudom, jobbra = tudom. Also show keyboard hints on desktop (←/→).
+	•	Simple SRS: „Nem tudom” jöjjön előbb újra, „Tudom” később. Save progress locally.
+	•	Progress bar (X/Y kártya, helyes/hibás számláló).
+	•	Move “Kártyák nehézségi szintje” setting from Settings into the Kártyák page (deck-level preference).
+
+4) Feltöltés & Szövegbevitel – átláthatóbb
+	•	Split the left column into two clear blocks:
+	1.	Szöveg beillesztése (textarea) with two buttons:
+	•	Összefoglaló (stub: show a placeholder message “AI szükséges – add meg a kulcsot a Beállításokban”)
+	•	Kártyák generálása (same stub; also allow generating manual preview layout to show what would happen)
+	2.	Fájl feltöltése (PDF/kép): keep the uploader. For now implement:
+	•	If PDF: extract text client-side with pdfjs-dist (no paid OCR). If it fails, show notice: „Pontatlan lehet, AI/OCR szükséges a jobb felismeréshez.”
+	•	If image: show notice: „AI/OCR szükséges a szövegkinyeréshez.”
+	•	Right column:
+	•	Feldolgozott tartalom box shows either the parsed text preview or the placeholder.
+	•	Téma Chat card disabled until the user saves the material.
+	•	Add a „Mentés anyagként” action (Title input). Saved items appear under Feltöltés page bottom as a list (title, created date, actions: „Megnyitás”, „Törlés”).
+	•	When a material is saved, enable the Téma Chat card with message: „A téma-specifikus chat használatához AI kulcs szükséges.”
+
+5) Haladás – valós adatok, állatszintek
+	•	Remove any fake stats. Start from zero, update from real local progress:
+	•	XP = (fókusz percek × 2) + (helyes kártyák × 1).
+	•	Show Szintek (állatok) with thresholds and icons/emojis:
+	1.	Hangya (0 XP), 2) Egér (101), 3) Nyúl (301), 4) Bagoly (701), 5) Delfin (1201), 6) Főnix (1801).
+	•	Card on top: Legutóbbi aktivitás (pl. „5 kártyát tanultál” +XP, dátum).
+	•	Achievements (grayed until unlocked): Első hét, Kártya mester, Fókusz bajnok.
+
+6) Fókusz mód
+	•	Keep the 25:00 Pomodoro. Save sessions locally.
+	•	Anti-cheat: keep the simple tab-blur warning. On finish, ask for Helyes kártyák száma (stepper), compute XP, update Progress.
+
+7) Értesítések & emlékeztetők
+	•	In Beállítások:
+	•	Fix Napi emlékeztetők toggle. On first enable, request Notification permission. If denied, show clear help text.
+	•	Implement a local (client) scheduler using setTimeout/setInterval that re-schedules on app load; store preferred hour+minute in localStorage. (Server push is out of scope.)
+	•	Onboarding modal (first app launch only): ask „Kérsz napi emlékeztetőt?” + time picker. Save preference.
+
+8) Beállítások rendbetétele
+	•	Sections:
+	•	Megjelenés: Dark/Light, Accent color (palette), preview chips.
+	•	Értesítések: Napi emlékeztető + idő.
+	•	Adatkezelés:
+	•	Exportálás: let users download JSON of: decks, cards, materials, and progress.
+	•	Importálás: upload JSON to restore (merge or replace).
+	•	AI beállítások: OpenAI kulcs mező (masked). If empty, show banner: „Az AI funkciókhoz kulcs szükséges.”
+	•	Make sure all settings persist reliably.
+
+9) Mobile polish
+	•	Ensure file upload on iOS/Android opens Camera / Photos chooser (accept images & pdf).
+	•	Larger tap targets for study buttons, sticky bottom controls.
+	•	Support PWA install (optional): add manifest & basic service worker for offline shell (no heavy caching).
+
+10) QA
+	•	Test flows without AI: manual deck creation → study → XP increases → progress levels update.
+	•	Test that accent color & dark/light persist; reminders keep chosen time; exports produce a valid JSON and imports restore.
+
+Deliverables:
+	•	Updated code with the above.
+	•	Short CHANGELOG in the repo root (CHANGELOG_ZAP.md) in Hungarian summarizing fixes.
+	•	No breaking changes to current routes.
