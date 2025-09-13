@@ -2,6 +2,17 @@ import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/components/ThemeProvider';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import useStore from '@/store/useStore';
 import { 
   Sun, 
   Moon, 
@@ -21,9 +32,12 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { theme, setTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { focusState, resetFocus, setFocusState } = useStore();
+  const [showFocusExitDialog, setShowFocusExitDialog] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   const navigation = [
     { name: 'Funkciók', href: '/', icon: Layers },
@@ -43,6 +57,37 @@ export default function Layout({ children }: LayoutProps) {
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+
+  const handleNavigation = (href: string, event: React.MouseEvent) => {
+    // Don't prevent navigation if already on the same page or focus is not active
+    if (location === href || !focusState.isActive) {
+      return; // Allow normal navigation
+    }
+
+    // Set dialog flag FIRST to prevent race condition with focus detector
+    setFocusState({ isUIDialogOpen: true });
+    
+    // Then prevent the default Link behavior and show confirmation
+    event.preventDefault();
+    setPendingNavigation(href);
+    setShowFocusExitDialog(true);
+  };
+
+  const handleFocusExit = () => {
+    setFocusState({ isUIDialogOpen: false }); // Clear dialog flag
+    if (pendingNavigation) {
+      resetFocus(); // Reset focus state
+      setLocation(pendingNavigation); // Navigate to the pending location
+      setPendingNavigation(null);
+    }
+    setShowFocusExitDialog(false);
+  };
+
+  const handleCancelNavigation = () => {
+    setFocusState({ isUIDialogOpen: false }); // Clear dialog flag
+    setPendingNavigation(null);
+    setShowFocusExitDialog(false);
   };
 
   return (
@@ -65,6 +110,7 @@ export default function Layout({ children }: LayoutProps) {
                   <Link
                     key={item.name}
                     href={item.href}
+                    onClick={(e) => handleNavigation(item.href, e)}
                     data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
                   >
                     <Button
@@ -72,8 +118,11 @@ export default function Layout({ children }: LayoutProps) {
                       className={`px-3 py-2 text-sm font-medium transition-colors ${
                         isActive(item.href)
                           ? 'text-foreground bg-accent'
-                          : 'text-muted-foreground hover:text-primary hover:bg-accent'
+                          : focusState.isActive && location !== item.href
+                            ? 'text-muted-foreground/50 hover:text-muted-foreground cursor-not-allowed'
+                            : 'text-muted-foreground hover:text-primary hover:bg-accent'
                       }`}
+                      disabled={focusState.isActive && location !== item.href}
                     >
                       {item.name}
                     </Button>
@@ -123,7 +172,10 @@ export default function Layout({ children }: LayoutProps) {
                 <Link
                   key={item.name}
                   href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={(e) => {
+                    setMobileMenuOpen(false);
+                    handleNavigation(item.href, e);
+                  }}
                   data-testid={`mobile-nav-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
                 >
                   <Button
@@ -131,8 +183,11 @@ export default function Layout({ children }: LayoutProps) {
                     className={`w-full justify-start px-3 py-2 text-base font-medium transition-colors ${
                       isActive(item.href)
                         ? 'text-foreground bg-accent'
-                        : 'text-muted-foreground hover:text-primary hover:bg-accent'
+                        : focusState.isActive && location !== item.href
+                          ? 'text-muted-foreground/50 hover:text-muted-foreground cursor-not-allowed'
+                          : 'text-muted-foreground hover:text-primary hover:bg-accent'
                     }`}
+                    disabled={focusState.isActive && location !== item.href}
                   >
                     <item.icon className="mr-3 h-5 w-5" />
                     {item.name}
@@ -148,6 +203,26 @@ export default function Layout({ children }: LayoutProps) {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
+
+      {/* Focus Exit Confirmation Dialog */}
+      <AlertDialog open={showFocusExitDialog} onOpenChange={setShowFocusExitDialog}>
+        <AlertDialogContent data-testid="focus-exit-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Fókusz munkamenet aktív</AlertDialogTitle>
+            <AlertDialogDescription>
+              Jelenleg egy fókusz munkamenet van folyamatban. Ha most navigálsz, a munkamenet megszakad és elvész a haladás.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelNavigation} data-testid="button-cancel-navigation">
+              Maradok itt
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleFocusExit} data-testid="button-confirm-navigation">
+              Munkamenet befejezése
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

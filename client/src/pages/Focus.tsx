@@ -3,6 +3,15 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/services/api';
 import useStore from '@/store/useStore';
@@ -18,7 +27,8 @@ export default function Focus() {
   const [isComplete, setIsComplete] = useState(false);
   const [focusInterruptions, setFocusInterruptions] = useState(0);
   const [showCheatWarning, setShowCheatWarning] = useState(false);
-  const [correctCards, setCorrectCards] = useState(0);
+  const [showSessionEndModal, setShowSessionEndModal] = useState(false);
+  const [modalCardCount, setModalCardCount] = useState('');
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { focusState, setFocusState, resetFocus, focusAlerts } = useStore();
@@ -45,6 +55,11 @@ export default function Focus() {
   useEffect(() => {
     const unsubscribe = focusDetector.onFocusChange((event: FocusEvent) => {
       if (!isRunning) return;
+      
+      // Don't count interruptions during UI dialogs (navigation confirmation, session end modal)
+      if (focusState.isUIDialogOpen || showSessionEndModal) {
+        return;
+      }
 
       if (event.type === 'blur' || event.type === 'hidden' || event.type === 'idle') {
         setFocusInterruptions(prev => prev + 1);
@@ -64,7 +79,26 @@ export default function Focus() {
     });
 
     return unsubscribe;
-  }, [isRunning, focusAlerts, toast]);
+  }, [isRunning, focusAlerts, toast, focusState.isUIDialogOpen, showSessionEndModal]);
+
+  // Prevent page exit during focus session
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (focusState.isActive && isRunning) {
+        e.preventDefault();
+        e.returnValue = 'A fókusz munkamenet aktív! Biztosan elhagyja az oldalt? A munkamenet elvész.';
+        return 'A fókusz munkamenet aktív! Biztosan elhagyja az oldalt? A munkamenet elvész.';
+      }
+    };
+
+    if (focusState.isActive && isRunning) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [focusState.isActive, isRunning]);
 
   // Timer logic
   useEffect(() => {
@@ -93,9 +127,16 @@ export default function Focus() {
     };
   }, [isRunning, timeLeft]);
 
-  const handleTimerComplete = async () => {
+  const handleTimerComplete = () => {
+    // Show modal for card count input
+    setShowSessionEndModal(true);
+    setFocusState({ isUIDialogOpen: true }); // Signal that session end modal is open
+  };
+
+  const handleSessionEnd = async () => {
     const focusMinutes = Math.floor((FOCUS_DURATION - timeLeft) / 60);
     const wasInterrupted = focusInterruptions > 0;
+    const correctCards = parseInt(modalCardCount) || 0;
     const xp = calculateXP(focusMinutes, correctCards, wasInterrupted);
 
     // Save study session
@@ -103,7 +144,7 @@ export default function Focus() {
       type: 'focus',
       duration: focusMinutes,
       xpEarned: xp,
-      cardsStudied: 0,
+      cardsStudied: correctCards,
       correctCards,
       focusInterrupted: wasInterrupted,
     });
@@ -115,7 +156,7 @@ export default function Focus() {
 
     toast({
       title: "Fókusz munkamenet befejezve!",
-      description: `${focusMinutes} perc fókusz időt teljesítettél. +${xp} XP szerzett!`,
+      description: `${focusMinutes} perc fókusz időt teljesítettél. ${correctCards} kártyával. +${xp} XP szerzett!`,
     });
 
     setFocusState({
@@ -124,6 +165,10 @@ export default function Focus() {
       pausedTime: 0,
       interruptions: focusInterruptions,
     });
+    
+    setShowSessionEndModal(false);
+    setFocusState({ isUIDialogOpen: false }); // Clear dialog flag
+    setIsComplete(true);
   };
 
   const startTimer = () => {
@@ -132,6 +177,12 @@ export default function Focus() {
       isActive: true,
       startTime: new Date(),
       lastActivity: new Date(),
+    });
+    
+    // Show soft lock notification
+    toast({
+      title: "Fókusz mód aktiválva",
+      description: "A navigáció korlátozva a munkamenet alatt. Maradj fókuszban!",
     });
   };
 
@@ -149,7 +200,9 @@ export default function Focus() {
     setIsComplete(false);
     setFocusInterruptions(0);
     setShowCheatWarning(false);
-    setCorrectCards(0);
+    setModalCardCount('');
+    setShowSessionEndModal(false);
+    setFocusState({ isUIDialogOpen: false }); // Clear dialog flag on reset
     resetFocus();
     
     if (intervalRef.current) {
@@ -169,7 +222,7 @@ export default function Focus() {
 
   const expectedXP = calculateXP(
     Math.floor((FOCUS_DURATION - timeLeft) / 60), 
-    correctCards, 
+    0, // Cards will be entered at end
     focusInterruptions > 0
   );
 
@@ -265,29 +318,10 @@ export default function Focus() {
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Helyes kártyák:</span>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setCorrectCards(Math.max(0, correctCards - 1))}
-                    disabled={correctCards === 0}
-                    data-testid="button-decrease-cards"
-                  >
-                    -
-                  </Button>
-                  <span className="font-semibold text-card-foreground min-w-8" data-testid="correct-cards">
-                    {correctCards}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setCorrectCards(correctCards + 1)}
-                    data-testid="button-increase-cards"
-                  >
-                    +
-                  </Button>
-                </div>
+                <span className="text-muted-foreground">Tanult kártyák:</span>
+                <span className="font-semibold text-muted-foreground" data-testid="cards-note">
+                  A végén kérjük meg
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Várható XP:</span>
@@ -306,7 +340,7 @@ export default function Focus() {
               <strong>XP számítás:</strong>
             </p>
             <p className="text-sm text-muted-foreground">
-              Fókusz perc × 2 + Helyes kártyák × 5
+              Fókusz perc × 2 + Kártyák × 5
             </p>
             <p className="text-xs text-muted-foreground mt-2">
               A fókusz megszakadása csökkenti az XP-t
@@ -339,13 +373,60 @@ export default function Focus() {
                   Fókusz munkamenet befejezve!
                 </h4>
                 <p className="text-sm text-green-700 dark:text-green-300">
-                  Szuper munka! +{expectedXP} XP szerzett.
+                  Munkamenet sikeresen befejezve!
                 </p>
               </div>
             </CardContent>
           </Card>
         )}
       </div>
+
+      {/* Session End Modal */}
+      <Dialog open={showSessionEndModal} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md" data-testid="session-end-modal">
+          <DialogHeader>
+            <DialogTitle>Fókusz munkamenet befejezve! 🎉</DialogTitle>
+            <DialogDescription>
+              Hány kártyát tanultál a munkamenet során?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="cardCount">Tanult kártyák száma</Label>
+              <Input
+                id="cardCount"
+                type="number"
+                min="0"
+                max="999"
+                value={modalCardCount}
+                onChange={(e) => setModalCardCount(e.target.value)}
+                placeholder="pl. 15"
+                data-testid="input-card-count"
+                autoFocus
+              />
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setModalCardCount('0');
+                handleSessionEnd();
+              }}
+              data-testid="button-skip-cards"
+            >
+              Kihagyás (0 kártya)
+            </Button>
+            <Button
+              onClick={handleSessionEnd}
+              disabled={!modalCardCount || parseInt(modalCardCount) < 0}
+              data-testid="button-confirm-cards"
+            >
+              Munkamenet befejezése
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

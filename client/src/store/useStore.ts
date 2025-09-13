@@ -13,6 +13,7 @@ interface FocusState {
   pausedTime: number;
   interruptions: number;
   lastActivity: Date;
+  isUIDialogOpen: boolean;
 }
 
 interface FlashcardSession {
@@ -78,6 +79,7 @@ const useStore = create<AppState>()(
         pausedTime: 0,
         interruptions: 0,
         lastActivity: new Date(),
+        isUIDialogOpen: false,
       },
       flashcardSession: {
         cards: [],
@@ -123,6 +125,7 @@ const useStore = create<AppState>()(
             pausedTime: 0,
             interruptions: 0,
             lastActivity: new Date(),
+            isUIDialogOpen: false,
           }
         }),
       
