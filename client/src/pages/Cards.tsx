@@ -38,11 +38,7 @@ export default function Cards() {
   // Create deck mutation
   const createDeckMutation = useMutation({
     mutationFn: async (data: { name: string; description?: string }) => {
-      const response = await apiRequest('/api/decks', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const response = await apiRequest('POST', '/api/decks', data);
       return response;
     },
     onSuccess: () => {
