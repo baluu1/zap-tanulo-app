@@ -1,3 +1,5 @@
+import { openAIService } from "./services/openai"; 
+// ha a ./ nem jó, akkor "../services/openai"
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -431,3 +433,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   return httpServer;
 }
+// Új AI összefoglaló endpoint
+app.post("/api/summary", async (req, res) => {
+  try {
+    const text = String(req.body?.text ?? "");
+    const summary = await openAIService.generateSummary(text);
+    res.json({ summary });
+  } catch (err) {
+    console.error("AI hívás hiba:", err);
+    res.status(500).json({ error: "Nem sikerült összefoglalót készíteni." });
+  }
+});
