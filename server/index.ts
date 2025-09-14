@@ -2,7 +2,13 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase, cleanDemoData } from "./storage";
+const DEMO = process.env.DEMO_MODE === "true";
+const OPENAI_ENABLED = process.env.OPENAI_ENABLED === "true";
+const NO_NETWORK = process.env.NO_NETWORK === "true";
 
+if (DEMO || NO_NETWORK) {
+  console.log("[SAFE MODE] Demo/No-Network: külső init kihagyva.");
+}
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
