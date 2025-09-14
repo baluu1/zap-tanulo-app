@@ -1,137 +1,72 @@
+// server/services/openai.ts
 import OpenAI from "openai";
 
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+const DEMO = process.env.DEMO_MODE === "true";
+const NO_NETWORK = process.env.NO_NETWORK === "true";
+const OPENAI_ENABLED = process.env.OPENAI_ENABLED === "true";
+const API_KEY = process.env.OPENAI_API_KEY ?? "";
+const MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
 
 export class OpenAIService {
-  private openai: OpenAI | null = null;
+  private openai: OpenAI | null;
 
   constructor(apiKey?: string) {
-    if (apiKey) {
-      this.openai = new OpenAI({ apiKey });
-    }
+    const key = apiKey || API_KEY;
+    this.openai =
+      !DEMO && !NO_NETWORK && OPENAI_ENABLED && key
+        ? new OpenAI({ apiKey: key })
+        : null;
   }
 
-  setApiKey(apiKey: string) {
-    this.openai = new OpenAI({ apiKey });
+  setApiKey(apikey: string) {
+    this.openai =
+      !DEMO && !NO_NETWORK && OPENAI_ENABLED && apikey
+        ? new OpenAI({ apiKey: apikey })
+        : null;
   }
 
   isConfigured(): boolean {
-    return this.openai !== null;
+    return !!this.openai;
   }
 
   async testConnection(): Promise<boolean> {
     if (!this.openai) return false;
-    
     try {
-      await this.openai.chat.completions.create({
-        model: "gpt-5",
+      const res = await this.openai.chat.completions.create({
+        model: MODEL,
         messages: [{ role: "user", content: "Hello" }],
         max_tokens: 5,
       });
-      return true;
-    } catch (error) {
+      return !!res;
+    } catch {
       return false;
     }
   }
 
+  /** Rövid magyar összefoglaló – DEMO/OFFLINE módban nem hív hálót. */
   async generateSummary(text: string): Promise<string> {
     if (!this.openai) {
-      throw new Error("OpenAI API kulcs nincs beállítva");
+      // Nem hívunk külső API-t, visszaadunk determinisztikus “ál-összefoglalót”
+      const t = text.trim().replace(/\s+/g, " ");
+      const cut = t.slice(0, 140) + (t.length > 140 ? "…" : "");
+      return `AI kikapcsolva (demo/offline mód). Kivonat: ${cut}`;
     }
 
     const response = await this.openai.chat.completions.create({
-      model: "gpt-5",
+      model: MODEL,
       messages: [
         {
           role: "system",
-          content: "Te egy magyar tanulási asszisztens vagy. Készíts rövid, érthető összefoglalót a megadott szövegről magyar nyelven. Az összefoglaló legyen 2-3 mondat, és tartalmazza a legfontosabb pontokat."
+          content:
+            "Magyar tanulási asszisztens vagy. Foglald össze a szöveget 2–3 mondatban, tisztán és röviden, magyarul.",
         },
-        {
-          role: "user",
-          content: `Készíts összefoglalót erről a szövegről: ${text}`
-        }
+        { role: "user", content: text },
       ],
-      max_tokens: 200,
     });
 
-    return response.choices[0].message.content || "Nem sikerült összefoglalót készíteni.";
-  }
-
-  async generateFlashcards(text: string): Promise<Array<{ question: string; answer: string }>> {
-    if (!this.openai) {
-      throw new Error("OpenAI API kulcs nincs beállítva");
-    }
-
-    const response = await this.openai.chat.completions.create({
-      model: "gpt-5",
-      messages: [
-        {
-          role: "system",
-          content: "Te egy magyar tanulási asszisztens vagy. Készíts 5-8 tanulókártyát a megadott szövegből. Minden kártya legyen egy kérdés-válasz pár. A kérdések legyenek világosak és specifikusak, a válaszok rövidek és pontosak. Válaszolj JSON formátumban: {\"cards\": [{\"question\": \"...\", \"answer\": \"...\"}]}"
-        },
-        {
-          role: "user",
-          content: `Készíts tanulókártyákat erről a szövegről: ${text}`
-        }
-      ],
-      response_format: { type: "json_object" },
-      max_tokens: 1000,
-    });
-
-    try {
-      const result = JSON.parse(response.choices[0].message.content || "{}");
-      return result.cards || [];
-    } catch (error) {
-      throw new Error("Nem sikerült kártyákat generálni a válaszból.");
-    }
-  }
-
-  async chatGlobal(message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<string> {
-    if (!this.openai) {
-      throw new Error("OpenAI API kulcs nincs beállítva");
-    }
-
-    const messages = [
-      {
-        role: "system" as const,
-        content: "Te egy barátságos magyar tanulási asszisztens vagy. Segíts a felhasználónak bármilyen tanulással kapcsolatos kérdésben. Válaszolj magyarul, legyen informatív és motiváló."
-      },
-      ...conversationHistory,
-      { role: "user" as const, content: message }
-    ];
-
-    const response = await this.openai.chat.completions.create({
-      model: "gpt-5",
-      messages,
-      max_tokens: 500,
-    });
-
-    return response.choices[0].message.content || "Sajnos nem tudok válaszolni erre a kérdésre.";
-  }
-
-  async chatWithContext(message: string, context: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<string> {
-    if (!this.openai) {
-      throw new Error("OpenAI API kulcs nincs beállítva");
-    }
-
-    const messages = [
-      {
-        role: "system" as const,
-        content: `Te egy magyar tanulási asszisztens vagy. A felhasználó kérdései a következő tananyagról szólnak: "${context}". Válaszolj a kérdésekre a tananyag alapján, magyarul. Ha a kérdés nem kapcsolódik a tananyaghoz, udvariasan tereld vissza a témához.`
-      },
-      ...conversationHistory,
-      { role: "user" as const, content: message }
-    ];
-
-    const response = await this.openai.chat.completions.create({
-      model: "gpt-5",
-      messages,
-      max_tokens: 500,
-    });
-
-    return response.choices[0].message.content || "Sajnos nem tudok válaszolni erre a kérdésre.";
+    return response.choices?.[0]?.message?.content?.trim() ?? "";
   }
 }
 
-// Global instance that can be configured with API key
-export const openaiService = new OpenAIService(process.env.OPENAI_API_KEY);
+// Egyszerűen importálható singleton
+export const openAIService = new OpenAIService();
